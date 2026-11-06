@@ -1,0 +1,25 @@
+workflows:
+  fieldnote-testflight:
+    name: FieldNote TestFlight
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    integrations:
+      # Set this to the App Store Connect API key integration name configured in Codemagic.
+      app_store_connect: FieldNote
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: co.za.drkflm.fieldnote
+      xcode: latest
+    scripts:
+      - name: Apply App Store provisioning profile
+        script: xcode-project use-profiles
+      - name: Build signed IPA
+        script: xcode-project build-ipa --project "$CM_BUILD_DIR/FieldNote.xcodeproj" --scheme FieldNote
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

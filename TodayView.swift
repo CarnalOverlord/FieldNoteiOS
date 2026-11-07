@@ -95,6 +95,7 @@ struct TodayView: View {
             StatCard(title: "BODY FAT", value: bodyFat.map { String(format: "%.1f%%", $0) } ?? "—", detail: "US Navy estimate")
             StatCard(title: "TREND", value: String(format: "%+.1f", summary.forecast?.slope_per_week ?? 0), detail: "kg per week")
         }
+        .frame(maxWidth: .infinity)
     }
 
     private func insightCard(_ summary: Dashboard) -> some View {

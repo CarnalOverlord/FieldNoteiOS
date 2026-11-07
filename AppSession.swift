@@ -66,4 +66,19 @@ final class AppSession: ObservableObject {
         profile = try await APIClient.shared.updateProfile(payload)
         await loadDashboard()
     }
+
+    func generateInsight() async throws {
+        _ = try await APIClient.shared.generateInsight()
+        await loadDashboard()
+    }
+
+    func generateEntryInsight(id: String) async throws {
+        _ = try await APIClient.shared.generateEntryInsight(id: id)
+        await loadDashboard()
+    }
+
+    func deleteEntry(id: String) async throws {
+        try await APIClient.shared.deleteEntry(id: id)
+        await loadDashboard()
+    }
 }

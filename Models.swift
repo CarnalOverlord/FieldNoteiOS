@@ -42,6 +42,11 @@ struct PhotoUpload: Decodable {
     let size_bytes: Int
 }
 
+struct InsightResult: Decodable {
+    let text: String
+    let generated_at: String
+}
+
 struct TokenResponse: Decodable {
     let user: User
     let access_token: String
@@ -76,6 +81,72 @@ struct Forecast: Decodable {
     let current: Double
     let eta_date: String?
     let status: String
+}
+
+struct WeightPoint: Identifiable {
+    var id: Date { date }
+    let date: Date
+    let value: Double
+}
+
+struct WeightTrend {
+    let current: Double?
+    let slopePerWeek: Double?
+    let etaDate: Date?
+    let status: String
+    let recentPoints: [WeightPoint]
+    let forecastPoints: [WeightPoint]
+
+    static func calculate(entries: [Entry], goal: Double?) -> WeightTrend {
+        let points = entries.compactMap { entry -> WeightPoint? in
+            guard let weight = entry.weight_kg, let date = entryDate(entry.entry_date) else { return nil }
+            return WeightPoint(date: date, value: weight)
+        }.sorted { $0.date < $1.date }
+        let current = points.last?.value
+        let recent = Array(points.suffix(10))
+        guard recent.count >= 2 else {
+            return WeightTrend(current: current, slopePerWeek: nil, etaDate: nil, status: goal == nil ? "no-goal" : "not-enough-data", recentPoints: recent, forecastPoints: [])
+        }
+
+        let times = recent.map { $0.date.timeIntervalSince1970 * 1_000 }
+        let values = recent.map(\.value)
+        let meanTime = times.reduce(0, +) / Double(times.count)
+        let meanValue = values.reduce(0, +) / Double(values.count)
+        let numerator = zip(times, values).reduce(0.0) { $0 + ($1.0 - meanTime) * ($1.1 - meanValue) }
+        let denominator = times.reduce(0.0) { $0 + pow($1 - meanTime, 2) }
+        let slopePerMillisecond = denominator == 0 ? 0 : numerator / denominator
+        let slope = slopePerMillisecond * 86_400_000 * 7
+        guard let goal else { return WeightTrend(current: current, slopePerWeek: slope, etaDate: nil, status: "no-goal", recentPoints: recent, forecastPoints: []) }
+        guard let last = recent.last else { return WeightTrend(current: current, slopePerWeek: slope, etaDate: nil, status: "not-enough-data", recentPoints: recent, forecastPoints: []) }
+        if (goal < (points.first?.value ?? goal) && (current ?? goal) <= goal) || (goal > (points.first?.value ?? goal) && (current ?? goal) >= goal) {
+            return WeightTrend(current: current, slopePerWeek: slope, etaDate: nil, status: "reached", recentPoints: recent, forecastPoints: [])
+        }
+        guard abs(slope) >= 0.02 else { return WeightTrend(current: current, slopePerWeek: slope, etaDate: nil, status: "flat", recentPoints: recent, forecastPoints: []) }
+        let projectedDifference = goal - meanValue
+        guard projectedDifference * slope > 0 else { return WeightTrend(current: current, slopePerWeek: slope, etaDate: nil, status: "wrong-way", recentPoints: recent, forecastPoints: []) }
+        let milliseconds = projectedDifference / slopePerMillisecond
+        guard milliseconds.isFinite, milliseconds > 0 else { return WeightTrend(current: current, slopePerWeek: slope, etaDate: nil, status: "flat", recentPoints: recent, forecastPoints: []) }
+        let cap: Double = 86_400_000 * 365 * 3
+        let forecastDate = last.date.addingTimeInterval(min(milliseconds, cap) / 1000)
+        let forecast = [
+            WeightPoint(date: last.date, value: last.value),
+            WeightPoint(date: forecastDate, value: last.value + slopePerMillisecond * min(milliseconds, cap))
+        ]
+        return WeightTrend(current: current, slopePerWeek: slope, etaDate: milliseconds <= cap ? forecastDate : nil, status: "on-track", recentPoints: recent, forecastPoints: forecast)
+    }
+}
+
+func entryDate(_ value: String) -> Date? {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd"
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    return formatter.date(from: value)
+}
+
+func bodyFatOf(_ entry: Entry?, profile: Profile?) -> Double? {
+    guard let entry else { return nil }
+    return entry.body_fat_pct ?? profile.flatMap { NavyBodyFat.estimate(profile: $0, neck: entry.neck_cm, waist: entry.waist_cm, hip: entry.hip_cm) }
 }
 
 struct Problem: Decodable {

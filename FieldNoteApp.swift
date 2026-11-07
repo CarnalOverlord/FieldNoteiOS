@@ -25,23 +25,26 @@ struct FieldNoteApp: App {
 }
 
 enum FieldNoteStyle {
-    static let ink = Color(red: 0.96, green: 0.96, blue: 1.00)
-    static let paper = Color(red: 0.035, green: 0.025, blue: 0.15)
-    static let muted = Color(red: 0.70, green: 0.69, blue: 0.88)
-    static let accent = Color(red: 0.04, green: 0.82, blue: 1.00)
-    static let violet = Color(red: 0.48, green: 0.11, blue: 1.00)
-    static let cardInk = Color(red: 0.10, green: 0.08, blue: 0.31)
-    static let cardMuted = Color(red: 0.38, green: 0.37, blue: 0.56)
-    static let line = Color(red: 0.35, green: 0.27, blue: 0.64)
-    static let card = Color(red: 0.97, green: 0.98, blue: 1.00)
-    static let buttonGradient = LinearGradient(colors: [violet, Color(red: 0.35, green: 0.08, blue: 0.86)], startPoint: .topLeading, endPoint: .bottomTrailing)
+    static let ink = Color(red: 0.94, green: 0.92, blue: 0.87)
+    static let paper = Color(red: 0.025, green: 0.045, blue: 0.055)
+    static let muted = Color(red: 0.56, green: 0.60, blue: 0.62)
+    static let accent = Color(red: 0.84, green: 0.63, blue: 0.32)
+    static let violet = accent
+    static let sage = Color(red: 0.43, green: 0.69, blue: 0.58)
+    static let clay = Color(red: 0.80, green: 0.45, blue: 0.34)
+    static let cardInk = ink
+    static let cardMuted = muted
+    static let line = Color(red: 0.16, green: 0.20, blue: 0.22)
+    static let card = Color(red: 0.055, green: 0.085, blue: 0.10)
+    static let strongCard = Color(red: 0.015, green: 0.025, blue: 0.03)
+    static let buttonGradient = LinearGradient(colors: [Color(red: 0.91, green: 0.69, blue: 0.37), accent], startPoint: .topLeading, endPoint: .bottomTrailing)
 }
 
 struct FieldNoteBackground: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                LinearGradient(colors: [Color(red: 0.08, green: 0.035, blue: 0.31), FieldNoteStyle.paper, Color(red: 0.035, green: 0.025, blue: 0.18)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                LinearGradient(colors: [Color(red: 0.065, green: 0.085, blue: 0.09), FieldNoteStyle.paper, Color(red: 0.018, green: 0.03, blue: 0.037)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 Canvas { context, size in
                     for lane in 0..<9 {
                         let y = size.height * CGFloat(lane) / 8
@@ -51,9 +54,9 @@ struct FieldNoteBackground: View {
                         trace.addLine(to: CGPoint(x: jog, y: y))
                         trace.addLine(to: CGPoint(x: jog + 18, y: y - 18))
                         trace.addLine(to: CGPoint(x: size.width, y: y - 18))
-                        context.stroke(trace, with: .color(FieldNoteStyle.accent.opacity(0.07)), lineWidth: 1)
+                        context.stroke(trace, with: .color(FieldNoteStyle.accent.opacity(0.025)), lineWidth: 1)
                         let node = CGRect(x: jog + 14, y: y - 22, width: 8, height: 8)
-                        context.fill(Path(ellipseIn: node), with: .color(FieldNoteStyle.accent.opacity(0.16)))
+                        context.fill(Path(ellipseIn: node), with: .color(FieldNoteStyle.accent.opacity(0.07)))
                     }
                 }
                 Circle().fill(FieldNoteStyle.violet.opacity(0.36)).frame(width: 230).blur(radius: 75)
@@ -72,22 +75,23 @@ struct FieldNoteBackground: View {
 struct MainTabView: View {
     @EnvironmentObject private var session: AppSession
     @State private var selectedTab: FieldNoteTab = .today
+    @State private var showingProfile = false
 
     var body: some View {
         VStack(spacing: 0) {
             TabView(selection: $selectedTab) {
-                TodayView().tag(FieldNoteTab.today)
-                PhotosView().tag(FieldNoteTab.photos)
-                HistoryView().tag(FieldNoteTab.journal)
-                ProfileView(selectedTab: $selectedTab).tag(FieldNoteTab.profile)
+                TodayView(openSettings: { showingProfile = true }).tag(FieldNoteTab.today)
+                TrendsView(openSettings: { showingProfile = true }).tag(FieldNoteTab.trends)
+                PhotosView(openSettings: { showingProfile = true }).tag(FieldNoteTab.photos)
+                InsightsView(openSettings: { showingProfile = true }).tag(FieldNoteTab.insights)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
 
             HStack(spacing: 0) {
-                tabButton(.today, title: "Today", symbol: "sun.max")
-                tabButton(.photos, title: "Photos", symbol: "photo.on.rectangle")
-                tabButton(.journal, title: "Journal", symbol: "book.closed")
-                tabButton(.profile, title: "Profile", symbol: "person.crop.circle")
+                tabButton(.today, title: "Today", symbol: "waveform.path")
+                tabButton(.trends, title: "Trends", symbol: "chart.xyaxis.line")
+                tabButton(.photos, title: "Photos", symbol: "camera")
+                tabButton(.insights, title: "Insights", symbol: "sparkles")
             }
             .padding(.top, 10)
             .padding(.bottom, 4)
@@ -95,6 +99,7 @@ struct MainTabView: View {
         }
         .background(FieldNoteBackground())
         .task { await session.loadDashboard() }
+        .sheet(isPresented: $showingProfile) { ProfileView() }
     }
 
     private func tabButton(_ tab: FieldNoteTab, title: String, symbol: String) -> some View {
@@ -112,4 +117,34 @@ struct MainTabView: View {
     }
 }
 
-enum FieldNoteTab: Hashable { case today, photos, journal, profile }
+enum FieldNoteTab: Hashable { case today, trends, photos, insights }
+
+struct FieldNoteTopBar: View {
+    let openSettings: () -> Void
+
+    var body: some View {
+        HStack {
+            Text("F")
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(FieldNoteStyle.paper)
+                .frame(width: 38, height: 38)
+                .background(FieldNoteStyle.ink, in: Circle())
+            Spacer()
+            Text("FIELDNOTE · BODY LOG")
+                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                .tracking(2)
+                .foregroundStyle(FieldNoteStyle.muted)
+            Spacer()
+            Button(action: openSettings) {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(FieldNoteStyle.muted)
+                    .frame(width: 38, height: 38)
+                    .background(FieldNoteStyle.card, in: Circle())
+                    .overlay(Circle().stroke(FieldNoteStyle.line, lineWidth: 1))
+            }
+            .accessibilityLabel("Settings")
+        }
+        .padding(.bottom, 18)
+    }
+}

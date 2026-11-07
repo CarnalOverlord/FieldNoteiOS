@@ -38,7 +38,7 @@ final class APIClient {
         catch { throw APIError(message: "The server returned data the app could not read.") }
     }
 
-    func requestVoid(_ path: String, method: String = "POST", body: Data? = nil) async throws {
+    func requestVoid(_ path: String, method: String = "POST", body: Data? = nil, retryAuth: Bool = true) async throws {
         var request = URLRequest(url: makeURL(path))
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -46,6 +46,12 @@ final class APIClient {
         if let token = KeychainStore.read() { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIError(message: "The server response was unavailable.") }
+        if http.statusCode == 401, retryAuth {
+            do { _ = try await refresh() }
+            catch { KeychainStore.clear(); throw APIError(message: "Your session expired. Please sign in again.") }
+            try await requestVoid(path, method: method, body: body, retryAuth: false)
+            return
+        }
         guard (200..<300).contains(http.statusCode) else {
             let problem = try? decoder.decode(Problem.self, from: data)
             throw APIError(message: problem?.detail ?? problem?.title ?? "Request failed (\(http.statusCode)).")
@@ -63,6 +69,9 @@ final class APIClient {
     func saveEntry(date: String, payload: EntryPayload) async throws -> Entry {
         try await request("entries/by-date/\(date)", method: "PUT", body: payload.encodedWithNulls())
     }
+    func generateInsight() async throws -> InsightResult { try await request("insights", method: "POST") }
+    func generateEntryInsight(id: String) async throws -> InsightResult { try await request("entries/\(id)/insight", method: "POST") }
+    func deleteEntry(id: String) async throws { try await requestVoid("entries/\(id)", method: "DELETE") }
     func uploadPhoto(jpegData: Data, retryAuth: Bool = true) async throws -> PhotoUpload {
         let boundary = "FieldNote-\(UUID().uuidString)"
         var body = Data()

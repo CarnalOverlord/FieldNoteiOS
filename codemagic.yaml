@@ -4,8 +4,7 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m2
     integrations:
-      # Set this to the App Store Connect API key integration name configured in Codemagic.
-      app_store_connect: FieldNote
+      app_store_connect: Codemagic JBL Vendor
     environment:
       ios_signing:
         distribution_type: app_store
@@ -23,3 +22,4 @@ workflows:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
+

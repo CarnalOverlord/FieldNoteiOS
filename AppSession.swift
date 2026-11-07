@@ -42,12 +42,12 @@ final class AppSession: ObservableObject {
         }
     }
 
-    func save(date: Date, weight: String, neck: String, waist: String, hip: String, chest: String, arm: String, thigh: String, notes: String) async throws {
+    func save(date: Date, weight: String, neck: String, waist: String, hip: String, chest: String, arm: String, thigh: String, photoPath: String?, notes: String) async throws {
         let parts = Calendar.current.dateComponents([.year, .month, .day], from: date)
         let dateString = String(format: "%04d-%02d-%02d", parts.year ?? 2000, parts.month ?? 1, parts.day ?? 1)
-        let payload = EntryPayload(weight_kg: parseMeasurement(weight), neck_cm: parseMeasurement(neck), waist_cm: parseMeasurement(waist), hip_cm: parseMeasurement(hip), chest_cm: parseMeasurement(chest), arm_cm: parseMeasurement(arm), thigh_cm: parseMeasurement(thigh), body_fat_pct: nil, photo_path: nil, notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes)
-        guard payload.weight_kg != nil || payload.neck_cm != nil || payload.waist_cm != nil || payload.hip_cm != nil || payload.chest_cm != nil || payload.arm_cm != nil || payload.thigh_cm != nil else {
-            throw APIError(message: "Add at least one measurement before saving.")
+        let payload = EntryPayload(weight_kg: parseMeasurement(weight), neck_cm: parseMeasurement(neck), waist_cm: parseMeasurement(waist), hip_cm: parseMeasurement(hip), chest_cm: parseMeasurement(chest), arm_cm: parseMeasurement(arm), thigh_cm: parseMeasurement(thigh), body_fat_pct: nil, photo_path: photoPath, notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes)
+        guard payload.weight_kg != nil || payload.neck_cm != nil || payload.waist_cm != nil || payload.hip_cm != nil || payload.chest_cm != nil || payload.arm_cm != nil || payload.thigh_cm != nil || photoPath != nil else {
+            throw APIError(message: "Add a weight, measurement, or progress photo before saving.")
         }
         _ = try await APIClient.shared.saveEntry(date: dateString, payload: payload)
         await loadDashboard()

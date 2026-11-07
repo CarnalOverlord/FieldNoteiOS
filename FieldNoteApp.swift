@@ -18,6 +18,7 @@ struct FieldNoteApp: App {
                 }
             }
             .tint(FieldNoteStyle.ink)
+            .fontDesign(.rounded)
             .preferredColorScheme(.dark)
         }
     }
@@ -70,20 +71,45 @@ struct FieldNoteBackground: View {
 
 struct MainTabView: View {
     @EnvironmentObject private var session: AppSession
+    @State private var selectedTab: FieldNoteTab = .today
 
     var body: some View {
-        TabView {
-            TodayView()
-                .tabItem { Label("Today", systemImage: "sun.max") }
-            HistoryView()
-                .tabItem { Label("Journal", systemImage: "book.closed") }
-            ProfileView()
-                .tabItem { Label("Profile", systemImage: "person.crop.circle") }
+        VStack(spacing: 0) {
+            TabView(selection: $selectedTab) {
+                TodayView().tag(FieldNoteTab.today)
+                PhotosView().tag(FieldNoteTab.photos)
+                HistoryView().tag(FieldNoteTab.journal)
+                ProfileView(selectedTab: $selectedTab).tag(FieldNoteTab.profile)
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+
+            HStack(spacing: 0) {
+                tabButton(.today, title: "Today", symbol: "sun.max")
+                tabButton(.photos, title: "Photos", symbol: "photo.on.rectangle")
+                tabButton(.journal, title: "Journal", symbol: "book.closed")
+                tabButton(.profile, title: "Profile", symbol: "person.crop.circle")
+            }
+            .padding(.top, 10)
+            .padding(.bottom, 4)
+            .background(FieldNoteStyle.paper.opacity(0.96))
         }
-        .toolbarBackground(.visible, for: .tabBar)
-        .toolbarBackground(FieldNoteStyle.paper.opacity(0.96), for: .tabBar)
-        .toolbarColorScheme(.dark, for: .tabBar)
         .background(FieldNoteBackground())
         .task { await session.loadDashboard() }
     }
+
+    private func tabButton(_ tab: FieldNoteTab, title: String, symbol: String) -> some View {
+        Button { withAnimation(.easeInOut(duration: 0.22)) { selectedTab = tab } } label: {
+            VStack(spacing: 5) {
+                Image(systemName: symbol).font(.system(size: 18, weight: selectedTab == tab ? .semibold : .regular, design: .rounded))
+                Text(title).font(.system(size: 10, weight: selectedTab == tab ? .semibold : .regular, design: .rounded))
+            }
+            .foregroundStyle(selectedTab == tab ? FieldNoteStyle.accent : FieldNoteStyle.muted)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
+    }
 }
+
+enum FieldNoteTab: Hashable { case today, photos, journal, profile }

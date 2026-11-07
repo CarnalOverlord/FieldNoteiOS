@@ -63,6 +63,48 @@ final class APIClient {
     func saveEntry(date: String, payload: EntryPayload) async throws -> Entry {
         try await request("entries/by-date/\(date)", method: "PUT", body: payload.encodedWithNulls())
     }
+    func uploadPhoto(jpegData: Data, retryAuth: Bool = true) async throws -> PhotoUpload {
+        let boundary = "FieldNote-\(UUID().uuidString)"
+        var body = Data()
+        body.append(Data("--\(boundary)\r\n".utf8))
+        body.append(Data("Content-Disposition: form-data; name=\"file\"; filename=\"progress.jpg\"\r\n".utf8))
+        body.append(Data("Content-Type: image/jpeg\r\n\r\n".utf8))
+        body.append(jpegData)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+        var request = URLRequest(url: makeURL("photos"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainStore.read() { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw APIError(message: "The server response was unavailable.") }
+        if http.statusCode == 401, retryAuth {
+            do { _ = try await refresh() }
+            catch { KeychainStore.clear(); throw APIError(message: "Your session expired. Please sign in again.") }
+            return try await uploadPhoto(jpegData: jpegData, retryAuth: false)
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let problem = try? decoder.decode(Problem.self, from: data)
+            throw APIError(message: problem?.detail ?? problem?.title ?? "Photo upload failed (\(http.statusCode)).")
+        }
+        return try decoder.decode(PhotoUpload.self, from: data)
+    }
+
+    func photoData(path: String, retryAuth: Bool = true) async throws -> Data {
+        let encodedPath = path.split(separator: "/").map { String($0).addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))) ?? String($0) }.joined(separator: "/")
+        var request = URLRequest(url: makeURL("photos/\(encodedPath)"))
+        request.setValue("image/*", forHTTPHeaderField: "Accept")
+        if let token = KeychainStore.read() { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw APIError(message: "The photo response was unavailable.") }
+        if http.statusCode == 401, retryAuth {
+            do { _ = try await refresh() }
+            catch { KeychainStore.clear(); throw APIError(message: "Your session expired. Please sign in again.") }
+            return try await photoData(path: path, retryAuth: false)
+        }
+        guard (200..<300).contains(http.statusCode) else { throw APIError(message: "This progress photo could not be loaded.") }
+        return data
+    }
     func updateProfile(_ payload: ProfilePayload) async throws -> Profile {
         let values: [String: Any] = [
             "display_name": payload.display_name as Any? ?? NSNull(),

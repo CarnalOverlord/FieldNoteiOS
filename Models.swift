@@ -35,6 +35,13 @@ struct Entry: Codable, Identifiable {
     var created_at: String?
 }
 
+struct PhotoUpload: Decodable {
+    let path: String
+    let url: String
+    let content_type: String
+    let size_bytes: Int
+}
+
 struct TokenResponse: Decodable {
     let user: User
     let access_token: String

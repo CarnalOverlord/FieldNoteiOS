@@ -114,7 +114,7 @@ struct SignInView: View {
     private var brand: some View {
         HStack(spacing: 13) {
             Image(systemName: "leaf")
-                .font(.system(size: 22, weight: .semibold))
+                .font(.system(size: 22, weight: .semibold, design: .rounded))
                 .foregroundStyle(FieldNoteStyle.accent)
                 .frame(width: 54, height: 54)
                 .background(FieldNoteStyle.buttonGradient, in: RoundedRectangle(cornerRadius: 17))
@@ -140,7 +140,7 @@ struct SignInView: View {
                 .foregroundStyle(FieldNoteStyle.ink.opacity(0.9))
             HStack(spacing: 11) {
                 Image(systemName: icon)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
                     .foregroundStyle(FieldNoteStyle.cardMuted)
                     .frame(width: 20)
                 field()

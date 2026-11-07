@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject private var session: AppSession
+    @Binding var selectedTab: FieldNoteTab
     @State private var name = ""
     @State private var sex = "female"
     @State private var height = ""
@@ -49,6 +50,13 @@ struct ProfileView: View {
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { withAnimation(.easeInOut(duration: 0.22)) { selectedTab = .today } } label: {
+                        Label("Today", systemImage: "chevron.left")
+                    }
+                }
+            }
             .onAppear(perform: hydrate)
         }
     }

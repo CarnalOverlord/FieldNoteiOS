@@ -35,11 +35,11 @@ struct TodayView: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(Date.now.formatted(.dateTime.weekday(.wide).month(.wide).day()).uppercased())
                     .font(.system(size: 11, weight: .semibold, design: .rounded)).tracking(1.5).foregroundStyle(FieldNoteStyle.muted)
-                Text("Today, gently.").font(.system(size: 30, weight: .medium, design: .serif)).foregroundStyle(FieldNoteStyle.ink)
+                Text("Today, gently.").font(.system(size: 30, weight: .medium, design: .rounded)).foregroundStyle(FieldNoteStyle.ink)
             }
             Spacer()
             Button { showingEditor = true } label: {
-                Image(systemName: "plus").font(.system(size: 16, weight: .semibold)).foregroundStyle(FieldNoteStyle.paper)
+                Image(systemName: "plus").font(.system(size: 16, weight: .semibold, design: .rounded)).foregroundStyle(FieldNoteStyle.paper)
                     .frame(width: 46, height: 46).background(FieldNoteStyle.accent, in: Circle())
                     .shadow(color: FieldNoteStyle.accent.opacity(0.48), radius: 16, y: 5)
             }
@@ -52,31 +52,31 @@ struct TodayView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
                 Label("YOUR LATEST CHECK-IN", systemImage: "leaf")
-                    .font(.system(size: 10, weight: .bold)).tracking(1.1).foregroundStyle(FieldNoteStyle.cardMuted)
+                    .font(.system(size: 10, weight: .bold, design: .rounded)).tracking(1.1).foregroundStyle(FieldNoteStyle.cardMuted)
                 Spacer()
-                if summary.weigh_in_due { Text("DUE TODAY").font(.system(size: 9, weight: .bold)).tracking(0.8).foregroundStyle(FieldNoteStyle.accent) }
+                if summary.weigh_in_due { Text("DUE TODAY").font(.system(size: 9, weight: .bold, design: .rounded)).tracking(0.8).foregroundStyle(FieldNoteStyle.accent) }
             }
             if let entry = summary.latest_entry {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text(entry.weight_kg.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "—")
-                        .font(.system(size: 55, weight: .regular, design: .serif)).foregroundStyle(FieldNoteStyle.cardInk)
-                    Text("kg").font(.system(size: 17, weight: .medium)).foregroundStyle(FieldNoteStyle.cardMuted)
+                        .font(.system(size: 55, weight: .regular, design: .rounded)).foregroundStyle(FieldNoteStyle.cardInk)
+                    Text("kg").font(.system(size: 17, weight: .medium, design: .rounded)).foregroundStyle(FieldNoteStyle.cardMuted)
                     Spacer()
                     if let previous = summary.previous_entry?.weight_kg, let current = entry.weight_kg {
                         let delta = current - previous
                         VStack(alignment: .trailing, spacing: 4) {
-                            Text(String(format: "%+.1f kg", delta)).font(.system(size: 13, weight: .semibold)).foregroundStyle(delta <= 0 ? FieldNoteStyle.cardInk : FieldNoteStyle.violet)
-                            Text("since last time").font(.system(size: 10)).foregroundStyle(FieldNoteStyle.cardMuted)
+                            Text(String(format: "%+.1f kg", delta)).font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundStyle(delta <= 0 ? FieldNoteStyle.cardInk : FieldNoteStyle.violet)
+                            Text("since last time").font(.system(size: 10, weight: .regular, design: .rounded)).foregroundStyle(FieldNoteStyle.cardMuted)
                         }
                     }
                 }
                 HStack {
-                    Text(displayDate(entry.entry_date)).font(.system(size: 12)).foregroundStyle(FieldNoteStyle.cardMuted)
+                    Text(displayDate(entry.entry_date)).font(.system(size: 12, weight: .regular, design: .rounded)).foregroundStyle(FieldNoteStyle.cardMuted)
                     Spacer()
-                    if let goal = summary.profile.goal_weight_kg { Text("Goal  \(goal, specifier: "%.1f") kg").font(.system(size: 12, weight: .medium)).foregroundStyle(FieldNoteStyle.cardInk) }
+                    if let goal = summary.profile.goal_weight_kg { Text("Goal  \(goal, specifier: "%.1f") kg").font(.system(size: 12, weight: .medium, design: .rounded)).foregroundStyle(FieldNoteStyle.cardInk) }
                 }
             } else {
-                Text("Your first entry starts a useful little story.").font(.system(size: 19, design: .serif)).foregroundStyle(FieldNoteStyle.cardInk)
+                Text("Your first entry starts a useful little story.").font(.system(size: 19, design: .rounded)).foregroundStyle(FieldNoteStyle.cardInk)
                 Button("Log your first check-in") { showingEditor = true }.font(.subheadline.weight(.semibold)).foregroundStyle(FieldNoteStyle.violet)
             }
         }
@@ -99,11 +99,11 @@ struct TodayView: View {
 
     private func insightCard(_ summary: Dashboard) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("A NOTE TO YOURSELF", systemImage: "quote.opening").font(.system(size: 10, weight: .bold)).tracking(1).foregroundStyle(FieldNoteStyle.accent)
+            Label("A NOTE TO YOURSELF", systemImage: "quote.opening").font(.system(size: 10, weight: .bold, design: .rounded)).tracking(1).foregroundStyle(FieldNoteStyle.accent)
             if let insight = summary.profile.last_insight, !insight.isEmpty {
-                Text(insight).font(.system(size: 15, design: .serif)).lineSpacing(4).foregroundStyle(FieldNoteStyle.ink)
+                Text(insight).font(.system(size: 15, design: .rounded)).lineSpacing(4).foregroundStyle(FieldNoteStyle.ink)
             } else {
-                Text("Small, steady check-ins make patterns easier to see over time.").font(.system(size: 16, design: .serif)).lineSpacing(4).foregroundStyle(FieldNoteStyle.ink)
+                Text("Small, steady check-ins make patterns easier to see over time.").font(.system(size: 16, design: .rounded)).lineSpacing(4).foregroundStyle(FieldNoteStyle.ink)
             }
         }
         .padding(20).frame(maxWidth: .infinity, alignment: .leading)
@@ -113,18 +113,18 @@ struct TodayView: View {
     private var recentSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Recent notes").font(.system(size: 21, weight: .medium, design: .serif)).foregroundStyle(FieldNoteStyle.ink)
+                Text("Recent check-ins").font(.system(size: 21, weight: .medium, design: .rounded)).foregroundStyle(FieldNoteStyle.ink)
                 Spacer()
             }
             ForEach(session.entries.prefix(3)) { entry in
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(displayDate(entry.entry_date)).font(.system(size: 13, weight: .medium)).foregroundStyle(FieldNoteStyle.ink)
-                        Text(entry.notes?.isEmpty == false ? entry.notes! : "A check-in, kept simple").font(.system(size: 11)).foregroundStyle(FieldNoteStyle.muted).lineLimit(1)
+                        Text(displayDate(entry.entry_date)).font(.system(size: 13, weight: .medium, design: .rounded)).foregroundStyle(FieldNoteStyle.ink)
+                        Text(entry.notes?.isEmpty == false ? entry.notes! : "A check-in, kept simple").font(.system(size: 11, weight: .regular, design: .rounded)).foregroundStyle(FieldNoteStyle.muted).lineLimit(1)
                     }
                     Spacer()
                     Text(entry.weight_kg.map { String(format: "%.1f kg", $0) } ?? "Measurements")
-                        .font(.system(size: 13, weight: .semibold)).foregroundStyle(FieldNoteStyle.ink)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundStyle(FieldNoteStyle.ink)
                 }
                 .padding(.vertical, 12)
                 if entry.id != session.entries.prefix(3).last?.id { Divider().overlay(FieldNoteStyle.line) }
@@ -141,9 +141,9 @@ private struct StatCard: View {
     let detail: String
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text(title).font(.system(size: 9, weight: .bold)).tracking(1).foregroundStyle(FieldNoteStyle.cardMuted)
-            Text(value).font(.system(size: 25, weight: .regular, design: .serif)).foregroundStyle(FieldNoteStyle.cardInk)
-            Text(detail).font(.system(size: 10)).foregroundStyle(FieldNoteStyle.cardMuted)
+            Text(title).font(.system(size: 9, weight: .bold, design: .rounded)).tracking(1).foregroundStyle(FieldNoteStyle.cardMuted)
+            Text(value).font(.system(size: 25, weight: .regular, design: .rounded)).foregroundStyle(FieldNoteStyle.cardInk)
+            Text(detail).font(.system(size: 10, weight: .regular, design: .rounded)).foregroundStyle(FieldNoteStyle.cardMuted)
         }
         .frame(maxWidth: .infinity, alignment: .leading).padding(17)
         .background(FieldNoteStyle.card, in: RoundedRectangle(cornerRadius: 19))

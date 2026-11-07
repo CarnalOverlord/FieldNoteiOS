@@ -1,4 +1,6 @@
 import SwiftUI
+import PhotosUI
+import UIKit
 
 struct EntryEditorView: View {
     @EnvironmentObject private var session: AppSession
@@ -12,6 +14,11 @@ struct EntryEditorView: View {
     @State private var arm = ""
     @State private var thigh = ""
     @State private var notes = ""
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var photoData: Data?
+    @State private var photoPath: String?
+    @State private var removePhoto = false
+    @State private var photoLoading = false
     @State private var busy = false
     @State private var error: String?
 
@@ -50,6 +57,21 @@ struct EntryEditorView: View {
                     } header: { Text("Measurements") } footer: { Text("The US Navy estimate uses your profile height and circumference measurements.") }
 
                     Section {
+                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                            Label(photoPath == nil && photoData == nil ? "Add progress photo" : "Change progress photo", systemImage: "photo.badge.plus")
+                        }
+                        if photoLoading { ProgressView("Preparing photo…") }
+                        if let data = photoData, let image = UIImage(data: data) {
+                            Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 220).clipShape(RoundedRectangle(cornerRadius: 14))
+                        } else if let photoPath, !removePhoto {
+                            RemoteProgressPhoto(path: photoPath).frame(height: 210)
+                        }
+                        if photoPath != nil || photoData != nil {
+                            Button("Remove photo", role: .destructive) { photoData = nil; photoPath = nil; removePhoto = true }
+                        }
+                    } header: { Text("Progress photo") } footer: { Text("Photos stay private to your account and can be viewed from the Photos tab.") }
+
+                    Section {
                         TextField("Anything you want to remember?", text: $notes, axis: .vertical)
                             .lineLimit(3...6)
                     } header: { Text("Note") }
@@ -67,7 +89,12 @@ struct EntryEditorView: View {
                         busy = true
                         Task {
                             do {
-                                try await session.save(date: date, weight: weight, neck: neck, waist: waist, hip: hip, chest: chest, arm: arm, thigh: thigh, notes: notes)
+                                if let photoData {
+                                    let upload = try await APIClient.shared.uploadPhoto(jpegData: photoData)
+                                    photoPath = upload.path
+                                    self.photoData = nil
+                                }
+                                try await session.save(date: date, weight: weight, neck: neck, waist: waist, hip: hip, chest: chest, arm: arm, thigh: thigh, photoPath: removePhoto ? nil : photoPath, notes: notes)
                                 dismiss()
                             } catch { self.error = error.localizedDescription }
                             busy = false
@@ -77,6 +104,23 @@ struct EntryEditorView: View {
                 }
             }
             .task { hydrateExistingEntry() }
+            .onChange(of: selectedPhoto) { _, item in
+                guard let item else { return }
+                photoLoading = true
+                Task {
+                    defer { photoLoading = false }
+                    do {
+                        guard let source = try await item.loadTransferable(type: Data.self),
+                              let image = UIImage(data: source),
+                              let jpeg = resizedJPEG(image) else {
+                            self.error = "This image could not be prepared. Try a different photo."
+                            return
+                        }
+                        photoData = jpeg
+                        removePhoto = false
+                    } catch { self.error = "This image could not be loaded. Try again." }
+                }
+            }
         }
     }
 
@@ -106,5 +150,34 @@ struct EntryEditorView: View {
         arm = existing.arm_cm.map { String($0) } ?? ""
         thigh = existing.thigh_cm.map { String($0) } ?? ""
         notes = existing.notes ?? ""
+        photoPath = existing.photo_path
+    }
+
+    private func resizedJPEG(_ image: UIImage) -> Data? {
+        let maxSide: CGFloat = 1800
+        let scale = min(1, maxSide / max(image.size.width, image.size.height))
+        let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.jpegData(withCompressionQuality: 0.82) { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
+    }
+}
+
+struct RemoteProgressPhoto: View {
+    let path: String
+    @State private var image: UIImage?
+    @State private var failed = false
+
+    var body: some View {
+        Group {
+            if let image { Image(uiImage: image).resizable().scaledToFit() }
+            else if failed { Label("Photo unavailable", systemImage: "photo") }
+            else { ProgressView() }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(FieldNoteStyle.card.opacity(0.1), in: RoundedRectangle(cornerRadius: 15))
+        .task(id: path) {
+            do { image = UIImage(data: try await APIClient.shared.photoData(path: path)); failed = image == nil }
+            catch { failed = true }
+        }
     }
 }

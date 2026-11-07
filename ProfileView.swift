@@ -1,8 +1,10 @@
 import SwiftUI
+import UIKit
 
 struct ProfileView: View {
     @EnvironmentObject private var session: AppSession
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var pushNotifications = PushNotificationManager.shared
     @State private var name = ""
     @State private var sex = "female"
     @State private var ageMode = "unset"
@@ -99,6 +101,52 @@ struct ProfileView: View {
                             }
                         }
 
+                        FieldNotePanel(padding: 17) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                SectionEyebrow(text: "Reminders")
+                                Toggle(isOn: Binding(
+                                    get: { pushNotifications.enabled },
+                                    set: { value in Task { await pushNotifications.setEnabled(value) } }
+                                )) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Weekly check-in")
+                                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                                            .foregroundStyle(FieldNoteStyle.ink)
+                                        Text("A nudge to log your weight and measurements.")
+                                            .font(.system(size: 11, design: .monospaced))
+                                            .foregroundStyle(FieldNoteStyle.muted)
+                                    }
+                                }
+                                .tint(FieldNoteStyle.accent)
+
+                                Text(pushNotifications.message)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundStyle(FieldNoteStyle.muted)
+                                    .fixedSize(horizontal: false, vertical: true)
+
+                                if pushNotifications.requiresSettings {
+                                    Button("Open iPhone Settings") {
+                                        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+                                        UIApplication.shared.open(url)
+                                    }
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundStyle(FieldNoteStyle.accent)
+                                }
+
+                                if pushNotifications.enabled {
+                                    Button {
+                                        Task { await pushNotifications.sendTestReminder() }
+                                    } label: {
+                                        Text("Send test reminder")
+                                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                                            .foregroundStyle(FieldNoteStyle.accent)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+
                         Button(role: .destructive) { Task { await session.signOut(); dismiss() } } label: {
                             Text("Sign out")
                                 .font(.system(size: 14, weight: .medium, design: .rounded))
@@ -118,6 +166,7 @@ struct ProfileView: View {
             .toolbarBackground(FieldNoteStyle.paper, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .onAppear(perform: hydrate)
+            .task { await pushNotifications.refreshAuthorization() }
         }
     }
 

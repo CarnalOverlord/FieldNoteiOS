@@ -34,6 +34,7 @@ final class AppSession: ObservableObject {
             dashboardData = summary
             profile = summary.profile
             entries = list.items.sorted { $0.entry_date > $1.entry_date }
+            await PushNotificationManager.shared.syncIfEnabled(userID: summary.profile.id)
             errorMessage = nil
         } catch {
             if KeychainStore.read() == nil {
@@ -54,6 +55,7 @@ final class AppSession: ObservableObject {
     }
 
     func signOut() async {
+        await PushNotificationManager.shared.removeRegistrationForSignOut()
         await APIClient.shared.logout()
         dashboardData = nil
         entries = []

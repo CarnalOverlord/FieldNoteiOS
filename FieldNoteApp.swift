@@ -3,7 +3,6 @@ import SwiftUI
 @main
 struct FieldNoteApp: App {
     @StateObject private var session = AppSession()
-    @UIApplicationDelegateAdaptor(FieldNoteAppDelegate.self) private var appDelegate
 
     var body: some Scene {
         WindowGroup {
@@ -100,9 +99,6 @@ struct MainTabView: View {
         }
         .background(FieldNoteBackground())
         .task { await session.loadDashboard() }
-        .onReceive(NotificationCenter.default.publisher(for: .fieldNoteOpenToday)) { _ in
-            withAnimation(.easeInOut(duration: 0.22)) { selectedTab = .today }
-        }
         .sheet(isPresented: $showingProfile) { ProfileView() }
     }
 

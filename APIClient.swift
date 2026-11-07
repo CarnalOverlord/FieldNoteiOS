@@ -72,16 +72,6 @@ final class APIClient {
     func generateInsight() async throws -> InsightResult { try await request("insights", method: "POST") }
     func generateEntryInsight(id: String) async throws -> InsightResult { try await request("entries/\(id)/insight", method: "POST") }
     func deleteEntry(id: String) async throws { try await requestVoid("entries/\(id)", method: "DELETE") }
-    func registerPushToken(deviceID: String, token: String, environment: String, timezone: String) async throws {
-        let body = try JSONSerialization.data(withJSONObject: ["platform": "ios", "token": token, "environment": environment, "timezone": timezone])
-        try await requestVoid("devices/\(deviceID)/push-token", method: "PUT", body: body)
-    }
-    func removePushToken(deviceID: String) async throws {
-        try await requestVoid("devices/\(deviceID)/push-token", method: "DELETE")
-    }
-    func sendPushTest(deviceID: String) async throws {
-        try await requestVoid("devices/\(deviceID)/push-test")
-    }
     func uploadPhoto(jpegData: Data, retryAuth: Bool = true) async throws -> PhotoUpload {
         let boundary = "FieldNote-\(UUID().uuidString)"
         var body = Data()

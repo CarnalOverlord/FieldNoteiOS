@@ -91,11 +91,10 @@ struct TodayView: View {
             session.profile.flatMap { NavyBodyFat.estimate(profile: $0, neck: entry.neck_cm, waist: entry.waist_cm, hip: entry.hip_cm) }
         }
         let bodyFat = savedEstimate ?? calculatedEstimate
-        HStack(spacing: 12) {
+        return HStack(spacing: 12) {
             StatCard(title: "BODY FAT", value: bodyFat.map { String(format: "%.1f%%", $0) } ?? "—", detail: "US Navy estimate")
             StatCard(title: "TREND", value: String(format: "%+.1f", summary.forecast?.slope_per_week ?? 0), detail: "kg per week")
         }
-        .frame(maxWidth: .infinity)
     }
 
     private func insightCard(_ summary: Dashboard) -> some View {

@@ -11,18 +11,18 @@ workflows:
         bundle_identifier: co.za.drkflm.fieldnote
       xcode: latest
     scripts:
+      - name: Set unique iOS build number
+        script: |
+          set -e
+          cd "$CM_BUILD_DIR"
+          BUILD_VERSION="${PROJECT_BUILD_NUMBER:-${BUILD_NUMBER:-6}}"
+          if [ "$BUILD_VERSION" -le 5 ]; then BUILD_VERSION=6; fi
+          agvtool new-version -all "$BUILD_VERSION"
+          echo "Set FieldNote build number to $BUILD_VERSION"
       - name: Apply App Store provisioning profile
         script: xcode-project use-profiles --custom-export-options='{"testFlightInternalTestingOnly":true}'
       - name: Build signed IPA
-        script: |
-          set -e
-          BUILD_VERSION="${PROJECT_BUILD_NUMBER:-${BUILD_NUMBER:-6}}"
-          if [ "$BUILD_VERSION" -le 5 ]; then BUILD_VERSION=6; fi
-          echo "Archiving FieldNote with CFBundleVersion $BUILD_VERSION"
-          xcode-project build-ipa \
-            --project "$CM_BUILD_DIR/FieldNote.xcodeproj" \
-            --scheme FieldNote \
-            --archive-xcargs "COMPILER_INDEX_STORE_ENABLE=NO CURRENT_PROJECT_VERSION=$BUILD_VERSION"
+        script: xcode-project build-ipa --project "$CM_BUILD_DIR/FieldNote.xcodeproj" --scheme FieldNote
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log

@@ -11,6 +11,8 @@ workflows:
         bundle_identifier: co.za.drkflm.fieldnote
       xcode: latest
     scripts:
+      - name: Set unique iOS build number
+        script: agvtool new-version -all "$BUILD_NUMBER"
       - name: Apply App Store provisioning profile
         script: xcode-project use-profiles --custom-export-options='{"testFlightInternalTestingOnly":true}'
       - name: Build signed IPA

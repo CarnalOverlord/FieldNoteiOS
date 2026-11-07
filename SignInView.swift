@@ -60,11 +60,11 @@ struct SignInView: View {
                     if let message = session.errorMessage {
                         Text(message)
                             .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(Color(red: 1, green: 0.63, blue: 0.68))
+                            .foregroundStyle(FieldNoteStyle.clay)
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(14)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.red.opacity(0.13), in: RoundedRectangle(cornerRadius: 14))
+                            .background(FieldNoteStyle.clay.opacity(0.13), in: RoundedRectangle(cornerRadius: 14))
                     }
 
                     Button(action: submit) {

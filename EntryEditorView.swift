@@ -76,7 +76,7 @@ struct EntryEditorView: View {
                             .lineLimit(3...6)
                     } header: { Text("Note") }
 
-                    if let error { Section { Text(error).font(.footnote).foregroundStyle(.red) } }
+                    if let error { Section { Text(error).font(.footnote).foregroundStyle(FieldNoteStyle.clay) } }
                 }
                 .scrollContentBackground(.hidden)
             }

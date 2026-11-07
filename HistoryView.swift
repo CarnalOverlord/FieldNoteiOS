@@ -87,7 +87,7 @@ private struct EntryDetailView: View {
                             Text(notes).font(.system(size: 16, design: .rounded)).lineSpacing(4).foregroundStyle(FieldNoteStyle.cardInk).padding(18).frame(maxWidth: .infinity, alignment: .leading).background(FieldNoteStyle.card.opacity(0.94), in: RoundedRectangle(cornerRadius: 18))
                         }
                         if let insight = entry.ai_insight, !insight.isEmpty {
-                            Text(insight).font(.system(size: 15, design: .rounded)).lineSpacing(4).padding(18).frame(maxWidth: .infinity, alignment: .leading).background(Color(red: 0.20, green: 0.13, blue: 0.46), in: RoundedRectangle(cornerRadius: 18))
+                            Text(insight).font(.system(size: 15, design: .rounded)).lineSpacing(4).padding(18).frame(maxWidth: .infinity, alignment: .leading).background(FieldNoteStyle.violet.opacity(0.24), in: RoundedRectangle(cornerRadius: 18))
                         }
                     }
                     .padding(20)

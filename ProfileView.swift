@@ -5,6 +5,9 @@ struct ProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var sex = "female"
+    @State private var ageMode = "unset"
+    @State private var dateOfBirth = Calendar.current.date(byAdding: .year, value: -30, to: .now) ?? .now
+    @State private var age = ""
     @State private var height = ""
     @State private var goal = ""
     @State private var busy = false
@@ -41,6 +44,27 @@ struct ProfileView: View {
                                     .pickerStyle(.segmented)
                                     .tint(FieldNoteStyle.accent)
                                 }
+                                VStack(alignment: .leading, spacing: 9) {
+                                    fieldLabel("Age · for BMR estimate")
+                                    Picker("Age", selection: $ageMode) {
+                                        Text("Not set").tag("unset")
+                                        Text("Birth date").tag("birthdate")
+                                        Text("Age only").tag("age")
+                                    }
+                                    .pickerStyle(.segmented)
+                                    .tint(FieldNoteStyle.accent)
+                                    if ageMode == "birthdate" {
+                                        DatePicker("Date of birth", selection: $dateOfBirth, in: earliestAllowedBirthDate...latestAllowedBirthDate, displayedComponents: .date)
+                                            .datePickerStyle(.compact)
+                                            .tint(FieldNoteStyle.accent)
+                                    } else if ageMode == "age" {
+                                        HStack {
+                                            Text("Age")
+                                            Spacer()
+                                            TextField("Years", text: $age).keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 90).profileInputStyle()
+                                        }
+                                    }
+                                }
                                 HStack(spacing: 10) {
                                     VStack(alignment: .leading, spacing: 7) {
                                         fieldLabel("Height · cm")
@@ -51,7 +75,7 @@ struct ProfileView: View {
                                         TextField("—", text: $goal).keyboardType(.decimalPad).profileInputStyle()
                                     }
                                 }
-                                Text("Used for the optional US Navy body-fat estimate and your weight trend forecast.")
+                                Text("Age, height, sex and your latest weight estimate resting energy use (BMR). This is not a calorie target. Height also supports the US Navy body-fat estimate.")
                                     .font(.system(size: 11, design: .monospaced)).lineSpacing(3).foregroundStyle(FieldNoteStyle.muted)
                                 Button(action: save) {
                                     HStack { Spacer(); if busy { ProgressView().tint(FieldNoteStyle.paper) }; Text(busy ? "Saving…" : "Save"); Spacer() }
@@ -102,10 +126,20 @@ struct ProfileView: View {
     }
 
     private func save() {
+        if ageMode == "age", !age.isEmpty, let years = Int(age), !(13...120).contains(years) {
+            message = "Enter an age from 13 to 120."
+            return
+        }
+        if ageMode == "age", !age.isEmpty, Int(age) == nil {
+            message = "Enter your age as a whole number."
+            return
+        }
         busy = true
         message = nil
         Task {
-            do { try await session.saveProfile(name: name, sex: sex, height: height, goal: goal); message = "Profile saved." }
+            let dob = ageMode == "birthdate" ? dateOfBirth.apiDateString : nil
+            let manualAge = ageMode == "age" ? age : ""
+            do { try await session.saveProfile(name: name, sex: sex, dateOfBirth: dob, age: manualAge, height: height, goal: goal); message = "Profile saved." }
             catch { message = error.localizedDescription }
             busy = false
         }
@@ -115,8 +149,30 @@ struct ProfileView: View {
         guard let profile = session.profile else { return }
         name = profile.display_name ?? ""
         sex = profile.sex
+        if let dob = profile.date_of_birth, let parsed = entryDate(dob) {
+            ageMode = "birthdate"
+            dateOfBirth = parsed
+        } else if let ageYears = profile.age_years {
+            ageMode = "age"
+            age = String(ageYears)
+        }
         height = profile.height_cm.map { String($0) } ?? ""
         goal = profile.goal_weight_kg.map { String($0) } ?? ""
+    }
+
+    private var latestAllowedBirthDate: Date {
+        Calendar.current.date(byAdding: .year, value: -13, to: .now) ?? .now
+    }
+
+    private var earliestAllowedBirthDate: Date {
+        Calendar.current.date(byAdding: .year, value: -120, to: .now) ?? .distantPast
+    }
+}
+
+private extension Date {
+    var apiDateString: String {
+        let parts = Calendar.current.dateComponents([.year, .month, .day], from: self)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 2000, parts.month ?? 1, parts.day ?? 1)
     }
 }
 

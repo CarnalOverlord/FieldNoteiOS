@@ -9,6 +9,8 @@ struct Profile: Codable {
     let id: String
     var display_name: String?
     var sex: String
+    var date_of_birth: String?
+    var age_years: Int?
     var height_cm: Double?
     var goal_weight_kg: Double?
     var last_insight: String?
@@ -176,8 +178,19 @@ struct EntryPayload: Encodable {
 struct ProfilePayload: Encodable {
     var display_name: String?
     var sex: String
+    var date_of_birth: String?
+    var age_years: Int?
     var height_cm: Double?
     var goal_weight_kg: Double?
+}
+
+struct BasalMetabolicRate {
+    static func estimate(profile: Profile, weightKg: Double?) -> Double? {
+        guard let age = profile.age_years, let height = profile.height_cm,
+              let weightKg, weightKg > 0, height > 0 else { return nil }
+        let sexOffset = profile.sex == "male" ? 5.0 : -161.0
+        return 10 * weightKg + 6.25 * height - 5 * Double(age) + sexOffset
+    }
 }
 
 struct NavyBodyFat {

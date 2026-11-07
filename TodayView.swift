@@ -23,6 +23,7 @@ struct TodayView: View {
                         if let error = session.errorMessage { InlineMessage(text: error, retry: { Task { await session.loadDashboard() } }) }
                         todayHeading
                         weightCard
+                        bmrCard
                         trendCard
                         bodyFatCard
                         progressPhotosCard
@@ -111,6 +112,37 @@ struct TodayView: View {
             .overlay(Capsule().stroke(FieldNoteStyle.line, lineWidth: 1))
             .lineLimit(1)
             .minimumScaleFactor(0.72)
+    }
+
+    private var bmrCard: some View {
+        let currentWeight = session.entries.first(where: { $0.weight_kg != nil })?.weight_kg
+        let estimate = session.profile.flatMap { BasalMetabolicRate.estimate(profile: $0, weightKg: currentWeight) }
+        return FieldNotePanel(padding: 17) {
+            HStack(spacing: 14) {
+                Image(systemName: "flame")
+                    .font(.system(size: 19, weight: .medium))
+                    .foregroundStyle(FieldNoteStyle.accent)
+                    .frame(width: 42, height: 42)
+                    .background(FieldNoteStyle.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 13))
+                VStack(alignment: .leading, spacing: 4) {
+                    SectionEyebrow(text: "Estimated BMR")
+                    if let estimate {
+                        Text("\(Int(estimate.rounded())) kcal/day")
+                            .font(.system(size: 22, weight: .medium, design: .monospaced))
+                            .foregroundStyle(FieldNoteStyle.ink)
+                    } else {
+                        Text("Add age, height and a weigh-in")
+                            .font(.system(size: 12, design: .rounded))
+                            .foregroundStyle(FieldNoteStyle.muted)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            Text("Resting energy estimate, not a calorie target or medical recommendation.")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(FieldNoteStyle.muted)
+                .padding(.top, 8)
+        }
     }
 
     private var trendCard: some View {

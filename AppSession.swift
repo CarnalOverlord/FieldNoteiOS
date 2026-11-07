@@ -61,8 +61,8 @@ final class AppSession: ObservableObject {
         isSignedIn = false
     }
 
-    func saveProfile(name: String, sex: String, height: String, goal: String) async throws {
-        let payload = ProfilePayload(display_name: name.isEmpty ? nil : name, sex: sex, height_cm: parseMeasurement(height), goal_weight_kg: parseMeasurement(goal))
+    func saveProfile(name: String, sex: String, dateOfBirth: String?, age: String, height: String, goal: String) async throws {
+        let payload = ProfilePayload(display_name: name.isEmpty ? nil : name, sex: sex, date_of_birth: dateOfBirth, age_years: Int(age), height_cm: parseMeasurement(height), goal_weight_kg: parseMeasurement(goal))
         profile = try await APIClient.shared.updateProfile(payload)
         await loadDashboard()
     }

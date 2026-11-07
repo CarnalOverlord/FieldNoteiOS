@@ -118,6 +118,8 @@ final class APIClient {
         let values: [String: Any] = [
             "display_name": payload.display_name as Any? ?? NSNull(),
             "sex": payload.sex,
+            "date_of_birth": payload.date_of_birth.map { $0 as Any } ?? NSNull(),
+            "age_years": payload.age_years.map { $0 as Any } ?? NSNull(),
             "height_cm": payload.height_cm as Any? ?? NSNull(),
             "goal_weight_kg": payload.goal_weight_kg as Any? ?? NSNull()
         ]

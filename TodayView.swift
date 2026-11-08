@@ -5,6 +5,7 @@ struct TodayView: View {
     @EnvironmentObject private var session: AppSession
     let openSettings: () -> Void
     @State private var showingEditor = false
+    @State private var showingProgressStory = false
 
     private var trend: WeightTrend {
         WeightTrend.calculate(entries: session.entries, goal: session.profile?.goal_weight_kg)
@@ -23,6 +24,7 @@ struct TodayView: View {
                         if let error = session.errorMessage { InlineMessage(text: error, retry: { Task { await session.loadDashboard() } }) }
                         todayHeading
                         weightCard
+                        shareStoryButton
                         bmrCard
                         trendCard
                         bodyFatCard
@@ -52,6 +54,53 @@ struct TodayView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showingEditor) { EntryEditorView(date: Date()) }
+        }
+    }
+
+    private var progressStoryData: ProgressStoryData? {
+        ProgressStoryData.make(
+            entries: session.entries,
+            profile: session.profile,
+            latestMeasurement: session.dashboardData?.latest_measurement_entry
+        )
+    }
+
+    private var shareStoryButton: some View {
+        Button {
+            showingProgressStory = true
+        } label: {
+            HStack(spacing: 13) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(FieldNoteStyle.paper)
+                    .frame(width: 42, height: 42)
+                    .background(FieldNoteStyle.buttonGradient, in: RoundedRectangle(cornerRadius: 14))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Make a progress story")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(FieldNoteStyle.ink)
+                    Text("A little recognition goes a long way.")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(FieldNoteStyle.muted)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(FieldNoteStyle.accent)
+            }
+            .padding(14)
+            .background(FieldNoteStyle.card.opacity(0.78), in: RoundedRectangle(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(FieldNoteStyle.line, lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: 20))
+        }
+        .buttonStyle(.plain)
+        .disabled(progressStoryData == nil)
+        .opacity(progressStoryData == nil ? 0.55 : 1)
+        .accessibilityHint("Creates a story-sized image with your latest progress to share.")
+        .sheet(isPresented: $showingProgressStory) {
+            if let data = progressStoryData {
+                ProgressStoryShareSheet(data: data)
+            }
         }
     }
 

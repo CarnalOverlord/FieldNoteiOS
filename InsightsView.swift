@@ -85,10 +85,10 @@ struct InsightsView: View {
                                 action: openSettings
                             )
                         }
+                    }
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
                     .padding(.bottom, 30)
-                    }
                 }
                 .refreshable { await session.loadDashboard() }
             }

@@ -12,6 +12,7 @@ struct ProfileView: View {
     @State private var goal = ""
     @State private var busy = false
     @State private var message: String?
+    @StateObject private var billing = BillingManager()
 
     var body: some View {
         NavigationStack {
@@ -88,6 +89,51 @@ struct ProfileView: View {
                                     Text(message).font(.system(size: 11, design: .monospaced))
                                         .foregroundStyle(message == "Profile saved." ? FieldNoteStyle.sage : FieldNoteStyle.clay)
                                 }
+                            }
+                        }
+
+                        FieldNotePanel(padding: 17) {
+                            VStack(alignment: .leading, spacing: 13) {
+                                SectionEyebrow(text: "FieldNote Plus")
+                                Text(billing.activeProductIDs.isEmpty ? "Build a clearer picture of your progress." : "Your subscription is active.")
+                                    .font(.system(size: 15, weight: .medium, design: .rounded)).foregroundStyle(FieldNoteStyle.ink)
+                                Text("Choose monthly or yearly billing. Subscriptions renew automatically until cancelled in your Apple account settings.")
+                                    .font(.system(size: 11, design: .monospaced)).lineSpacing(3).foregroundStyle(FieldNoteStyle.muted)
+                                if billing.isLoading && billing.products.isEmpty {
+                                    ProgressView("Loading plans…").tint(FieldNoteStyle.accent)
+                                } else if billing.products.isEmpty {
+                                    Text("Plans are unavailable right now.")
+                                        .font(.system(size: 12, design: .monospaced)).foregroundStyle(FieldNoteStyle.muted)
+                                } else {
+                                    ForEach(billing.products, id: \.id) { product in
+                                        Button { Task { await billing.purchase(product) } } label: {
+                                            HStack {
+                                                VStack(alignment: .leading, spacing: 3) {
+                                                    Text(product.id == BillingManager.monthlyProductID ? "Monthly" : "Annual")
+                                                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                                    Text(product.displayPrice + (product.id == BillingManager.monthlyProductID ? " / month" : " / year"))
+                                                        .font(.system(size: 11, design: .monospaced)).foregroundStyle(FieldNoteStyle.muted)
+                                                }
+                                                Spacer()
+                                                Text(billing.activeProductIDs.contains(product.id) ? "ACTIVE" : "Choose")
+                                                    .font(.system(size: 10, weight: .medium, design: .monospaced)).tracking(1)
+                                                    .foregroundStyle(FieldNoteStyle.accent)
+                                            }
+                                            .padding(13)
+                                            .background(FieldNoteStyle.paper, in: RoundedRectangle(cornerRadius: 13))
+                                            .overlay(RoundedRectangle(cornerRadius: 13).stroke(FieldNoteStyle.line, lineWidth: 1))
+                                        }
+                                        .buttonStyle(.plain)
+                                        .disabled(billing.activeProductIDs.contains(product.id))
+                                    }
+                                }
+                                Button("Restore purchases") { Task { await billing.restore() } }
+                                    .font(.system(size: 12, weight: .medium, design: .rounded)).foregroundStyle(FieldNoteStyle.accent)
+                                if let billingMessage = billing.message {
+                                    Text(billingMessage).font(.system(size: 11, design: .monospaced)).foregroundStyle(FieldNoteStyle.muted)
+                                }
+                                Text("Payment is charged to your Apple Account. Manage or cancel your subscription in Settings.")
+                                    .font(.system(size: 10, design: .monospaced)).lineSpacing(2).foregroundStyle(FieldNoteStyle.muted)
                             }
                         }
 

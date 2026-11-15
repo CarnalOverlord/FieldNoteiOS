@@ -9,6 +9,7 @@ final class AppSession: ObservableObject {
     @Published var entries: [Entry] = []
     @Published var profile: Profile?
     @Published var errorMessage: String?
+    @Published var shouldLogToday = false
 
     init() {
         isSignedIn = KeychainStore.read() != nil
@@ -34,6 +35,8 @@ final class AppSession: ObservableObject {
             dashboardData = summary
             profile = summary.profile
             entries = list.items.sorted { $0.entry_date > $1.entry_date }
+            let latestWeight = entries.first { ($0.weight_kg ?? 0) > 0 }
+            WidgetShared.save(weight: latestWeight?.weight_kg, heightCm: summary.profile.height_cm, date: latestWeight?.entry_date)
             errorMessage = nil
         } catch {
             if KeychainStore.read() == nil {
@@ -58,6 +61,7 @@ final class AppSession: ObservableObject {
         dashboardData = nil
         entries = []
         profile = nil
+        WidgetShared.save(weight: nil, heightCm: nil, date: nil)
         isSignedIn = false
     }
 

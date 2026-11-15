@@ -20,6 +20,10 @@ struct FieldNoteApp: App {
             .tint(FieldNoteStyle.accent)
             .fontDesign(.rounded)
             .preferredColorScheme(.dark)
+            .onOpenURL { url in
+                guard url.scheme == "fieldnote", url.host == "log-today" || url.host == "add-today" else { return }
+                session.shouldLogToday = true
+            }
         }
     }
 }
@@ -76,6 +80,7 @@ struct MainTabView: View {
     @EnvironmentObject private var session: AppSession
     @State private var selectedTab: FieldNoteTab = .today
     @State private var showingProfile = false
+    @State private var widgetLogToday = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -100,6 +105,15 @@ struct MainTabView: View {
         .background(FieldNoteBackground())
         .task { await session.loadDashboard() }
         .sheet(isPresented: $showingProfile) { ProfileView() }
+        .sheet(isPresented: $widgetLogToday) { EntryEditorView(date: Date()).environmentObject(session) }
+        .onAppear(perform: presentWidgetLogIfRequested)
+        .onChange(of: session.shouldLogToday) { _, _ in presentWidgetLogIfRequested() }
+    }
+
+    private func presentWidgetLogIfRequested() {
+        guard session.shouldLogToday else { return }
+        session.shouldLogToday = false
+        widgetLogToday = true
     }
 
     private func tabButton(_ tab: FieldNoteTab, title: String, symbol: String) -> some View {

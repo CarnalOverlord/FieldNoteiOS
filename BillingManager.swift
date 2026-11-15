@@ -27,12 +27,11 @@ final class BillingManager: ObservableObject {
     func refresh() async {
         isLoading = true
         defer { isLoading = false }
-        do {
-            products = try await Product.products(for: Self.productIDs).sorted {
-                $0.id == Self.monthlyProductID
-            }
-        } catch {
-            message = "Subscriptions are temporarily unavailable. Please try again later."
+        products = await Product.products(for: Self.productIDs).sorted { lhs, rhs in
+            if lhs.id == rhs.id { return false }
+            if lhs.id == Self.monthlyProductID { return true }
+            if rhs.id == Self.monthlyProductID { return false }
+            return lhs.id < rhs.id
         }
         do { apply(try await APIClient.shared.billingEntitlement()) }
         catch { message = error.localizedDescription }

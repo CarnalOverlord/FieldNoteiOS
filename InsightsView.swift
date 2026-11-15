@@ -84,10 +84,11 @@ struct InsightsView: View {
                                 detail: "Unlock personalized reflections on your recent check-ins and progress patterns.",
                                 action: openSettings
                             )
-                    }
+                        }
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
                     .padding(.bottom, 30)
+                    }
                 }
                 .refreshable { await session.loadDashboard() }
             }

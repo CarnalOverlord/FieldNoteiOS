@@ -18,13 +18,16 @@ workflows:
         script: |
           set -e
           cd "$CM_BUILD_DIR"
-          BUILD_VERSION=15
+          case "${BUILD_NUMBER:-}" in
+            ''|*[!0-9]*) echo "Codemagic BUILD_NUMBER is missing or invalid: ${BUILD_NUMBER:-unset}"; exit 1 ;;
+          esac
+          BUILD_VERSION=$((BUILD_NUMBER + 15))
           agvtool new-version -all "$BUILD_VERSION"
-          echo "Forced FieldNote build number to $BUILD_VERSION"
+          echo "Set FieldNote build number to $BUILD_VERSION from Codemagic build $BUILD_NUMBER"
       - name: Apply App Store provisioning profile
         script: xcode-project use-profiles --custom-export-options='{"testFlightInternalTestingOnly":true}'
       - name: Build signed IPA
-        script: xcode-project build-ipa --project "$CM_BUILD_DIR/FieldNote.xcodeproj" --scheme FieldNote --archive-xcargs "COMPILER_INDEX_STORE_ENABLE=NO CURRENT_PROJECT_VERSION=15"
+        script: xcode-project build-ipa --project "$CM_BUILD_DIR/FieldNote.xcodeproj" --scheme FieldNote --archive-xcargs "COMPILER_INDEX_STORE_ENABLE=NO"
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log

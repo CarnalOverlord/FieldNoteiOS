@@ -7,8 +7,11 @@ workflows:
       app_store_connect: Codemagic JBL Vendor
     environment:
       ios_signing:
-        distribution_type: app_store
-        bundle_identifier: co.za.drkflm.fieldnote
+        provisioning_profiles:
+          - fieldnote_app_store_app_groups
+          - fieldnote_widget_app_store
+        certificates:
+          - "JBL Vendor Distribution"
       xcode: latest
     scripts:
       - name: Set unique iOS build number

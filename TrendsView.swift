@@ -61,9 +61,13 @@ struct TrendsView: View {
                                 .foregroundStyle(FieldNoteStyle.ink)
                         }
                         weightForecastPanel
-                        measurementTrendPanel
+                        if session.isPremium {
+                            measurementTrendPanel
+                        } else {
+                            PremiumUpgradeCard(title: "Measurement and body-fat trends are Premium", detail: "Unlock measurement history and body-fat trend charts.", action: openSettings)
+                        }
                         logPanel
-                        if let actionError { InlineMessage(text: actionError) }
+                        if let actionError { InlineMessage(text: actionError, retry: openSettings) }
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
@@ -226,19 +230,21 @@ struct TrendsView: View {
                     .font(.system(size: 10, weight: .regular, design: .monospaced))
                     .foregroundStyle(FieldNoteStyle.muted)
                     .frame(width: 68, alignment: .leading)
-                Text(entry.weight_kg.map { String(format: "%.1f kg", $0) } ?? "Tape/photo")
+                Text(entry.weight_kg.map { String(format: "%.1f kg", $0) } ?? (session.isPremium ? "Tape/photo" : "Premium check-in"))
                     .font(.system(size: 14, weight: .medium, design: .monospaced))
                     .foregroundStyle(FieldNoteStyle.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                if let waist = entry.waist_cm { Text("\(String(format: "%.1f", waist)) cm").font(.system(size: 9, design: .monospaced)).foregroundStyle(FieldNoteStyle.muted) }
-                Button { runInsight(for: entry) } label: {
-                    if busyEntryID == entry.id { ProgressView().tint(FieldNoteStyle.accent) }
-                    else { Image(systemName: "sparkles").foregroundStyle(entry.ai_insight == nil ? FieldNoteStyle.muted : FieldNoteStyle.accent) }
-                }.buttonStyle(.plain).disabled(busyEntryID != nil).accessibilityLabel("Generate insight for this entry")
+                if session.isPremium, let waist = entry.waist_cm { Text("\(String(format: "%.1f", waist)) cm").font(.system(size: 9, design: .monospaced)).foregroundStyle(FieldNoteStyle.muted) }
+                if session.isPremium {
+                    Button { runInsight(for: entry) } label: {
+                        if busyEntryID == entry.id { ProgressView().tint(FieldNoteStyle.accent) }
+                        else { Image(systemName: "sparkles").foregroundStyle(entry.ai_insight == nil ? FieldNoteStyle.muted : FieldNoteStyle.accent) }
+                    }.buttonStyle(.plain).disabled(busyEntryID != nil).accessibilityLabel("Generate insight for this entry")
+                }
                 Button(role: .destructive) { entryToDelete = entry } label: { Image(systemName: "trash").foregroundStyle(FieldNoteStyle.muted) }
                     .buttonStyle(.plain).accessibilityLabel("Delete this entry")
             }
-            if let text = entry.ai_insight, !text.isEmpty {
+            if session.isPremium, let text = entry.ai_insight, !text.isEmpty {
                 Text(text).font(.system(size: 11, weight: .regular, design: .monospaced)).lineSpacing(3).foregroundStyle(FieldNoteStyle.muted)
                     .padding(10).frame(maxWidth: .infinity, alignment: .leading).background(FieldNoteStyle.paper.opacity(0.8), in: RoundedRectangle(cornerRadius: 12))
             }
@@ -260,7 +266,7 @@ struct TrendsView: View {
         actionError = nil
         Task {
             do { try await session.generateEntryInsight(id: entry.id) }
-            catch { actionError = error.localizedDescription }
+            catch { actionError = (error as? APIError)?.isPremiumRequired == true ? "AI Insights are part of Premium." : error.localizedDescription }
             busyEntryID = nil
         }
     }

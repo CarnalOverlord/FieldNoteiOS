@@ -5,6 +5,7 @@ import UIKit
 struct EntryEditorView: View {
     @EnvironmentObject private var session: AppSession
     @Environment(\.dismiss) private var dismiss
+    private let openPremium: () -> Void
     @State var date: Date
     @State private var weight = ""
     @State private var neck = ""
@@ -22,8 +23,9 @@ struct EntryEditorView: View {
     @State private var busy = false
     @State private var error: String?
 
-    init(date: Date) {
+    init(date: Date, openPremium: @escaping () -> Void = {}) {
         _date = State(initialValue: date)
+        self.openPremium = openPremium
     }
 
     private var estimate: Double? {
@@ -41,35 +43,47 @@ struct EntryEditorView: View {
                         measurement("Weight", text: $weight, unit: "kg", symbol: "scalemass")
                     } header: { Text("The basics") }
 
-                    Section {
-                        measurement("Neck", text: $neck, unit: "cm")
-                        measurement("Waist", text: $waist, unit: "cm")
-                        if session.profile?.sex != "male" { measurement("Hip", text: $hip, unit: "cm") }
-                        measurement("Chest", text: $chest, unit: "cm")
-                        measurement("Arm", text: $arm, unit: "cm")
-                        measurement("Thigh", text: $thigh, unit: "cm")
-                        HStack {
-                            Text("Body fat estimate")
-                            Spacer()
-                            Text(estimate.map { String(format: "%.1f%%", $0) } ?? "Add profile height")
-                                .foregroundStyle(FieldNoteStyle.muted)
-                        }
-                    } header: { Text("Measurements") } footer: { Text("The US Navy estimate uses your profile height and circumference measurements.") }
+                    if session.isPremium {
+                        Section {
+                            measurement("Neck", text: $neck, unit: "cm")
+                            measurement("Waist", text: $waist, unit: "cm")
+                            if session.profile?.sex != "male" { measurement("Hip", text: $hip, unit: "cm") }
+                            measurement("Chest", text: $chest, unit: "cm")
+                            measurement("Arm", text: $arm, unit: "cm")
+                            measurement("Thigh", text: $thigh, unit: "cm")
+                            HStack {
+                                Text("Body fat estimate")
+                                Spacer()
+                                Text(estimate.map { String(format: "%.1f%%", $0) } ?? "Add profile height")
+                                    .foregroundStyle(FieldNoteStyle.muted)
+                            }
+                        } header: { Text("Measurements") } footer: { Text("The US Navy estimate uses your profile height and circumference measurements.") }
 
-                    Section {
-                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                            Label(photoPath == nil && photoData == nil ? "Add progress photo" : "Change progress photo", systemImage: "photo.badge.plus")
-                        }
-                        if photoLoading { ProgressView("Preparing photo…") }
-                        if let data = photoData, let image = UIImage(data: data) {
-                            Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 220).clipShape(RoundedRectangle(cornerRadius: 14))
-                        } else if let photoPath, !removePhoto {
-                            RemoteProgressPhoto(path: photoPath).frame(height: 210)
-                        }
-                        if photoPath != nil || photoData != nil {
-                            Button("Remove photo", role: .destructive) { photoData = nil; photoPath = nil; removePhoto = true }
-                        }
-                    } header: { Text("Progress photo") } footer: { Text("Photos stay private to your account and can be viewed from the Photos tab.") }
+                        Section {
+                            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                                Label(photoPath == nil && photoData == nil ? "Add progress photo" : "Change progress photo", systemImage: "photo.badge.plus")
+                            }
+                            if photoLoading { ProgressView("Preparing photo…") }
+                            if let data = photoData, let image = UIImage(data: data) {
+                                Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 220).clipShape(RoundedRectangle(cornerRadius: 14))
+                            } else if let photoPath, !removePhoto {
+                                RemoteProgressPhoto(path: photoPath).frame(height: 210)
+                            }
+                            if photoPath != nil || photoData != nil {
+                                Button("Remove photo", role: .destructive) { photoData = nil; photoPath = nil; removePhoto = true }
+                            }
+                        } header: { Text("Progress photo") } footer: { Text("Photos stay private to your account and can be viewed from the Photos tab.") }
+                    } else {
+                        Section {
+                            PremiumUpgradeCard(
+                                title: "Measurements and photos are Premium",
+                                detail: "Keep logging weight for free. Upgrade to add body measurements and private progress photos.",
+                                action: openPremium
+                            )
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                        } header: { Text("FieldNote Plus") }
+                    }
 
                     Section {
                         TextField("Anything you want to remember?", text: $notes, axis: .vertical)
@@ -96,7 +110,11 @@ struct EntryEditorView: View {
                                 }
                                 try await session.save(date: date, weight: weight, neck: neck, waist: waist, hip: hip, chest: chest, arm: arm, thigh: thigh, photoPath: removePhoto ? nil : photoPath, notes: notes)
                                 dismiss()
-                            } catch { self.error = error.localizedDescription }
+                            } catch {
+                                if let apiError = error as? APIError, apiError.isPremiumRequired {
+                                    self.error = "Premium is required for measurements and progress photos. Your weight check-in was not saved."
+                                } else { self.error = error.localizedDescription }
+                            }
                             busy = false
                         }
                     } label: { if busy { ProgressView() } else { Text("Save").fontWeight(.semibold) } }

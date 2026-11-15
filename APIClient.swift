@@ -32,7 +32,7 @@ final class APIClient {
         }
         guard (200..<300).contains(http.statusCode) else {
             let problem = try? decoder.decode(Problem.self, from: data)
-            throw APIError(message: problem?.detail ?? problem?.title ?? "Request failed (\(http.statusCode)).")
+            throw APIError(message: problem?.detail ?? problem?.title ?? "Request failed (\(http.statusCode)).", code: problem?.code, statusCode: http.statusCode)
         }
         do { return try decoder.decode(T.self, from: data) }
         catch { throw APIError(message: "The server returned data the app could not read.") }
@@ -71,6 +71,12 @@ final class APIClient {
     }
     func generateInsight() async throws -> InsightResult { try await request("insights", method: "POST") }
     func generateEntryInsight(id: String) async throws -> InsightResult { try await request("entries/\(id)/insight", method: "POST") }
+    func billingEntitlement() async throws -> PremiumEntitlement { try await request("billing/entitlement") }
+    func verifyApplePurchase(signedTransaction: String) async throws -> PremiumEntitlement {
+        let payload = ApplePurchaseVerification(store: "apple", signed_transaction: signedTransaction)
+        let body = try encoder.encode(payload)
+        return try await request("billing/verify", method: "POST", body: body)
+    }
     func deleteEntry(id: String) async throws { try await requestVoid("entries/\(id)", method: "DELETE") }
     func uploadPhoto(jpegData: Data, retryAuth: Bool = true) async throws -> PhotoUpload {
         let boundary = "FieldNote-\(UUID().uuidString)"
@@ -94,7 +100,7 @@ final class APIClient {
         }
         guard (200..<300).contains(http.statusCode) else {
             let problem = try? decoder.decode(Problem.self, from: data)
-            throw APIError(message: problem?.detail ?? problem?.title ?? "Photo upload failed (\(http.statusCode)).")
+            throw APIError(message: problem?.detail ?? problem?.title ?? "Photo upload failed (\(http.statusCode)).", code: problem?.code, statusCode: http.statusCode)
         }
         return try decoder.decode(PhotoUpload.self, from: data)
     }
@@ -111,18 +117,23 @@ final class APIClient {
             catch { KeychainStore.clear(); throw APIError(message: "Your session expired. Please sign in again.") }
             return try await photoData(path: path, retryAuth: false)
         }
-        guard (200..<300).contains(http.statusCode) else { throw APIError(message: "This progress photo could not be loaded.") }
+        guard (200..<300).contains(http.statusCode) else {
+            let problem = try? decoder.decode(Problem.self, from: data)
+            throw APIError(message: problem?.detail ?? "This progress photo could not be loaded.", code: problem?.code, statusCode: http.statusCode)
+        }
         return data
     }
-    func updateProfile(_ payload: ProfilePayload) async throws -> Profile {
-        let values: [String: Any] = [
+    func updateProfile(_ payload: ProfilePayload, includePremiumFields: Bool) async throws -> Profile {
+        var values: [String: Any] = [
             "display_name": payload.display_name as Any? ?? NSNull(),
-            "sex": payload.sex,
             "date_of_birth": payload.date_of_birth.map { $0 as Any } ?? NSNull(),
             "age_years": payload.age_years.map { $0 as Any } ?? NSNull(),
-            "height_cm": payload.height_cm as Any? ?? NSNull(),
             "goal_weight_kg": payload.goal_weight_kg as Any? ?? NSNull()
         ]
+        if includePremiumFields {
+            values["sex"] = payload.sex
+            values["height_cm"] = payload.height_cm as Any? ?? NSNull()
+        }
         let body = try JSONSerialization.data(withJSONObject: values)
         return try await request("profile", method: "PATCH", body: body)
     }
@@ -147,6 +158,7 @@ final class APIClient {
 }
 
 private struct Credentials: Encodable { let email: String; let password: String }
+private struct ApplePurchaseVerification: Encodable { let store: String; let signed_transaction: String }
 
 private extension EntryPayload {
     func encodedWithNulls() throws -> Data {

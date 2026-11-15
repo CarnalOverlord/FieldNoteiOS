@@ -105,7 +105,7 @@ struct MainTabView: View {
         .background(FieldNoteBackground())
         .task { await session.loadDashboard() }
         .sheet(isPresented: $showingProfile) { ProfileView() }
-        .sheet(isPresented: $widgetLogToday) { EntryEditorView(date: Date()).environmentObject(session) }
+        .sheet(isPresented: $widgetLogToday) { EntryEditorView(date: Date(), openPremium: { showingProfile = true }).environmentObject(session) }
         .onAppear(perform: presentWidgetLogIfRequested)
         .onChange(of: session.shouldLogToday) { _, _ in presentWidgetLogIfRequested() }
     }

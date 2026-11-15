@@ -24,13 +24,21 @@ struct TodayView: View {
                         if let error = session.errorMessage { InlineMessage(text: error, retry: { Task { await session.loadDashboard() } }) }
                         todayHeading
                         weightCard
-                        shareStoryButton
-                        bmrCard
                         trendCard
-                        bodyFatCard
-                        progressPhotosCard
-                        if let summary = session.dashboardData, let insight = summary.profile.last_insight, !insight.isEmpty {
-                            insightPreview(insight)
+                        if session.isPremium {
+                            shareStoryButton
+                            bmrCard
+                            bodyFatCard
+                            progressPhotosCard
+                            if let summary = session.dashboardData, let insight = summary.profile.last_insight, !insight.isEmpty {
+                                insightPreview(insight)
+                            }
+                        } else {
+                            PremiumUpgradeCard(
+                                title: "Unlock your full progress picture",
+                                detail: "Premium includes body measurements, body-fat trends, progress photos, BMR and AI Insights. Social story sharing is coming soon.",
+                                action: openSettings
+                            )
                         }
                     }
                     .padding(.horizontal, 20)
@@ -53,7 +61,7 @@ struct TodayView: View {
                 .padding(.bottom, 16)
             }
             .toolbar(.hidden, for: .navigationBar)
-            .sheet(isPresented: $showingEditor) { EntryEditorView(date: Date()) }
+            .sheet(isPresented: $showingEditor) { EntryEditorView(date: Date(), openPremium: openSettings) }
         }
     }
 

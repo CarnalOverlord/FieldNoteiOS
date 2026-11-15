@@ -10,6 +10,10 @@ final class AppSession: ObservableObject {
     @Published var profile: Profile?
     @Published var errorMessage: String?
     @Published var shouldLogToday = false
+    @Published var premiumEntitlement: PremiumEntitlement?
+    @Published var isPremiumStatusLoading = false
+
+    var isPremium: Bool { premiumEntitlement?.is_premium == true }
 
     init() {
         isSignedIn = KeychainStore.read() != nil
@@ -28,20 +32,36 @@ final class AppSession: ObservableObject {
 
     func loadDashboard() async {
         guard isSignedIn else { return }
+        isPremiumStatusLoading = true
         do {
             async let dashboard = APIClient.shared.dashboard()
             async let history = APIClient.shared.entries()
+            async let entitlement = APIClient.shared.billingEntitlement()
             let (summary, list) = try await (dashboard, history)
             dashboardData = summary
             profile = summary.profile
             entries = list.items.sorted { $0.entry_date > $1.entry_date }
+            premiumEntitlement = try? await entitlement
+            isPremiumStatusLoading = false
             let latestWeight = entries.first { ($0.weight_kg ?? 0) > 0 }
-            WidgetShared.save(weight: latestWeight?.weight_kg, heightCm: summary.profile.height_cm, date: latestWeight?.entry_date)
+            WidgetShared.save(weight: latestWeight?.weight_kg, heightCm: isPremium ? summary.profile.height_cm : nil, date: latestWeight?.entry_date)
             errorMessage = nil
         } catch {
+            isPremiumStatusLoading = false
             if KeychainStore.read() == nil {
                 isSignedIn = false
             } else { errorMessage = error.localizedDescription }
+        }
+    }
+
+    func refreshPremiumEntitlement() async {
+        guard isSignedIn else { premiumEntitlement = nil; return }
+        isPremiumStatusLoading = true
+        defer { isPremiumStatusLoading = false }
+        do { premiumEntitlement = try await APIClient.shared.billingEntitlement() }
+        catch {
+            premiumEntitlement = nil
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -61,13 +81,14 @@ final class AppSession: ObservableObject {
         dashboardData = nil
         entries = []
         profile = nil
+        premiumEntitlement = nil
         WidgetShared.save(weight: nil, heightCm: nil, date: nil)
         isSignedIn = false
     }
 
     func saveProfile(name: String, sex: String, dateOfBirth: String?, age: String, height: String, goal: String) async throws {
         let payload = ProfilePayload(display_name: name.isEmpty ? nil : name, sex: sex, date_of_birth: dateOfBirth, age_years: Int(age), height_cm: parseMeasurement(height), goal_weight_kg: parseMeasurement(goal))
-        profile = try await APIClient.shared.updateProfile(payload)
+        profile = try await APIClient.shared.updateProfile(payload, includePremiumFields: isPremium)
         await loadDashboard()
     }
 

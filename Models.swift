@@ -49,6 +49,15 @@ struct InsightResult: Decodable {
     let generated_at: String
 }
 
+struct PremiumEntitlement: Decodable {
+    let is_premium: Bool
+    let plan: String?
+    let store: String?
+    let status: String?
+    let expires_at: String?
+    let auto_renewing: Bool
+}
+
 struct TokenResponse: Decodable {
     let user: User
     let access_token: String
@@ -159,7 +168,11 @@ struct Problem: Decodable {
 
 struct APIError: LocalizedError {
     let message: String
+    var code: String? = nil
+    var statusCode: Int? = nil
     var errorDescription: String? { message }
+
+    var isPremiumRequired: Bool { code == "premium_required" }
 }
 
 struct EntryPayload: Encodable {

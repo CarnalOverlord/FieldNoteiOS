@@ -27,7 +27,13 @@ struct PhotosView: View {
                                 .foregroundStyle(FieldNoteStyle.ink)
                         }
 
-                        if photos.isEmpty {
+                        if !session.isPremium {
+                            PremiumUpgradeCard(
+                                title: "Your photo timeline is a Premium feature",
+                                detail: "Upgrade to add, compare and revisit private progress photos.",
+                                action: openSettings
+                            )
+                        } else if photos.isEmpty {
                             FieldNotePanel {
                                 VStack(spacing: 14) {
                                     PhotoPlaceholder().frame(height: 250)
@@ -47,7 +53,7 @@ struct PhotosView: View {
                 }
                 .refreshable { await session.loadDashboard() }
 
-                if !photos.isEmpty {
+                if session.isPremium && !photos.isEmpty {
                     Button { showingEditor = true } label: {
                         Label("Add photo", systemImage: "plus")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
@@ -60,7 +66,7 @@ struct PhotosView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
-            .sheet(isPresented: $showingEditor) { EntryEditorView(date: Date()) }
+            .sheet(isPresented: $showingEditor) { EntryEditorView(date: Date(), openPremium: openSettings) }
             .onAppear(perform: setInitialPhotos)
             .onChange(of: photos.map(\.id)) { _, _ in setInitialPhotos() }
         }

@@ -25,6 +25,7 @@ struct InsightsView: View {
                                 .foregroundStyle(FieldNoteStyle.ink)
                         }
 
+                        if session.isPremium {
                         FieldNotePanel(padding: 20) {
                             HStack(alignment: .top, spacing: 14) {
                                 ZStack {
@@ -77,6 +78,12 @@ struct InsightsView: View {
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity)
                             .padding(.horizontal, 8)
+                        } else {
+                            PremiumUpgradeCard(
+                                title: "AI Insights are a Premium feature",
+                                detail: "Unlock personalized reflections on your recent check-ins and progress patterns.",
+                                action: openSettings
+                            )
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 12)

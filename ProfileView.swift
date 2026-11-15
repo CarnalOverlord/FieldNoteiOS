@@ -36,14 +36,19 @@ struct ProfileView: View {
                                         .textContentType(.name).textInputAutocapitalization(.words)
                                         .profileInputStyle()
                                 }
-                                VStack(alignment: .leading, spacing: 7) {
-                                    fieldLabel("Body profile · for body fat formula")
-                                    Picker("Body profile", selection: $sex) {
-                                        Text("Female").tag("female")
-                                        Text("Male").tag("male")
+                                if session.isPremium {
+                                    VStack(alignment: .leading, spacing: 7) {
+                                        fieldLabel("Body profile · for body fat formula")
+                                        Picker("Body profile", selection: $sex) {
+                                            Text("Female").tag("female")
+                                            Text("Male").tag("male")
+                                        }
+                                        .pickerStyle(.segmented)
+                                        .tint(FieldNoteStyle.accent)
                                     }
-                                    .pickerStyle(.segmented)
-                                    .tint(FieldNoteStyle.accent)
+                                } else {
+                                    Text("Body profile settings are included with FieldNote Plus.")
+                                        .font(.system(size: 11, design: .monospaced)).foregroundStyle(FieldNoteStyle.muted)
                                 }
                                 VStack(alignment: .leading, spacing: 9) {
                                     fieldLabel("Age · for BMR estimate")
@@ -66,12 +71,19 @@ struct ProfileView: View {
                                         }
                                     }
                                 }
-                                HStack(spacing: 10) {
-                                    VStack(alignment: .leading, spacing: 7) {
-                                        fieldLabel("Height · cm")
-                                        TextField("—", text: $height).keyboardType(.decimalPad).profileInputStyle()
+                                if session.isPremium {
+                                    HStack(spacing: 10) {
+                                        VStack(alignment: .leading, spacing: 7) {
+                                            fieldLabel("Height · cm")
+                                            TextField("—", text: $height).keyboardType(.decimalPad).profileInputStyle()
+                                        }
+                                        VStack(alignment: .leading, spacing: 7) {
+                                            fieldLabel("Goal · kg")
+                                            TextField("—", text: $goal).keyboardType(.decimalPad).profileInputStyle()
+                                        }
                                     }
-                                    VStack(alignment: .leading, spacing: 7) {
+                                } else {
+                                    VStack(alignment: .leading, spacing: 10) {
                                         fieldLabel("Goal · kg")
                                         TextField("—", text: $goal).keyboardType(.decimalPad).profileInputStyle()
                                     }
@@ -95,7 +107,7 @@ struct ProfileView: View {
                         FieldNotePanel(padding: 17) {
                             VStack(alignment: .leading, spacing: 13) {
                                 SectionEyebrow(text: "FieldNote Plus")
-                                Text(billing.activeProductIDs.isEmpty ? "Build a clearer picture of your progress." : "Your subscription is active.")
+                                Text(session.isPremium ? "Your subscription is active." : "Build a clearer picture of your progress.")
                                     .font(.system(size: 15, weight: .medium, design: .rounded)).foregroundStyle(FieldNoteStyle.ink)
                                 Text("Choose monthly or yearly billing. Subscriptions renew automatically until cancelled in your Apple account settings.")
                                     .font(.system(size: 11, design: .monospaced)).lineSpacing(3).foregroundStyle(FieldNoteStyle.muted)
@@ -115,7 +127,7 @@ struct ProfileView: View {
                                                         .font(.system(size: 11, design: .monospaced)).foregroundStyle(FieldNoteStyle.muted)
                                                 }
                                                 Spacer()
-                                                Text(billing.activeProductIDs.contains(product.id) ? "ACTIVE" : "Choose")
+                                                Text(session.isPremium ? "ACTIVE" : "Choose")
                                                     .font(.system(size: 10, weight: .medium, design: .monospaced)).tracking(1)
                                                     .foregroundStyle(FieldNoteStyle.accent)
                                             }
@@ -124,7 +136,7 @@ struct ProfileView: View {
                                             .overlay(RoundedRectangle(cornerRadius: 13).stroke(FieldNoteStyle.line, lineWidth: 1))
                                         }
                                         .buttonStyle(.plain)
-                                        .disabled(billing.activeProductIDs.contains(product.id))
+                                        .disabled(session.isPremium)
                                     }
                                 }
                                 Button("Restore purchases") { Task { await billing.restore() } }
@@ -163,7 +175,11 @@ struct ProfileView: View {
             }
             .toolbarBackground(FieldNoteStyle.paper, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-            .onAppear(perform: hydrate)
+            .onAppear {
+                billing.onEntitlementUpdated = { session.premiumEntitlement = $0 }
+                hydrate()
+                Task { await session.refreshPremiumEntitlement() }
+            }
         }
     }
 

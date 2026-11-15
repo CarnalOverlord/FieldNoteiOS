@@ -18,6 +18,39 @@ struct FieldNotePanel<Content: View>: View {
     }
 }
 
+struct PremiumUpgradeCard: View {
+    let title: String
+    let detail: String
+    let action: () -> Void
+
+    var body: some View {
+        FieldNotePanel(padding: 17) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles").foregroundStyle(FieldNoteStyle.accent)
+                    SectionEyebrow(text: "FieldNote Plus", color: FieldNoteStyle.accent)
+                }
+                Text(title)
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .foregroundStyle(FieldNoteStyle.ink)
+                Text(detail)
+                    .font(.system(size: 12, design: .monospaced))
+                    .lineSpacing(3)
+                    .foregroundStyle(FieldNoteStyle.muted)
+                Button(action: action) {
+                    Text("Explore Premium")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(FieldNoteStyle.paper)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(FieldNoteStyle.buttonGradient, in: RoundedRectangle(cornerRadius: 13))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
 struct SectionEyebrow: View {
     let text: String
     var color: Color = FieldNoteStyle.muted

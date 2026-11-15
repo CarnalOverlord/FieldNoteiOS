@@ -11,8 +11,10 @@ final class BillingManager: ObservableObject {
 
     @Published private(set) var products: [Product] = []
     @Published private(set) var activeProductIDs: Set<String> = []
+    @Published private(set) var premiumEntitlement: PremiumEntitlement?
     @Published private(set) var isLoading = false
     @Published var message: String?
+    var onEntitlementUpdated: ((PremiumEntitlement) -> Void)?
     private var updatesTask: Task<Void, Never>?
 
     init() {
@@ -29,10 +31,11 @@ final class BillingManager: ObservableObject {
             products = try await Product.products(for: Self.productIDs).sorted {
                 $0.id == Self.monthlyProductID
             }
-            await updateEntitlements()
         } catch {
             message = "Subscriptions are temporarily unavailable. Please try again later."
         }
+        do { apply(try await APIClient.shared.billingEntitlement()) }
+        catch { message = error.localizedDescription }
     }
 
     func purchase(_ product: Product) async {
@@ -41,10 +44,10 @@ final class BillingManager: ObservableObject {
             switch try await product.purchase() {
             case .success(let result):
                 let transaction = try verified(result)
+                let entitlement = try await APIClient.shared.verifyApplePurchase(signedTransaction: result.jwsRepresentation)
                 await transaction.finish()
-                await updateEntitlements()
-                message = "Subscription active."
-                // Backend receipt/transaction synchronization will be added when its endpoint is ready.
+                apply(entitlement)
+                message = entitlement.is_premium ? "Subscription verified and active." : "The App Store purchase was received, but no active subscription was found. Refresh subscriptions to try again."
             case .pending:
                 message = "Purchase is awaiting approval."
             case .userCancelled:
@@ -53,7 +56,7 @@ final class BillingManager: ObservableObject {
                 message = "The purchase could not be completed."
             }
         } catch {
-            message = "The purchase could not be completed. Please try again."
+            message = error.localizedDescription
         }
     }
 
@@ -61,30 +64,45 @@ final class BillingManager: ObservableObject {
         message = nil
         do {
             try await AppStore.sync()
-            await updateEntitlements()
-            message = activeProductIDs.isEmpty ? "No active subscription was found." : "Purchases restored."
+            for await result in Transaction.currentEntitlements {
+                guard let transaction = try? verified(result),
+                      Self.productIDs.contains(transaction.productID),
+                      transaction.revocationDate == nil else { continue }
+                let entitlement = try await APIClient.shared.verifyApplePurchase(signedTransaction: result.jwsRepresentation)
+                apply(entitlement)
+            }
+            let entitlement = try await APIClient.shared.billingEntitlement()
+            apply(entitlement)
+            message = entitlement.is_premium ? "Subscription restored and verified." : "No active subscription was found."
         } catch {
-            message = "Purchases could not be restored. Please try again."
+            message = error.localizedDescription
         }
     }
 
     private func observeTransactions() async {
         for await result in Transaction.updates {
-            guard let transaction = try? verified(result) else { continue }
-            await transaction.finish()
-            await updateEntitlements()
+            guard let transaction = try? verified(result), Self.productIDs.contains(transaction.productID) else { continue }
+            do {
+                let entitlement = try await APIClient.shared.verifyApplePurchase(signedTransaction: result.jwsRepresentation)
+                await transaction.finish()
+                apply(entitlement)
+                message = entitlement.is_premium ? "Subscription verified and active." : "No active subscription was found."
+            } catch { message = error.localizedDescription }
         }
     }
 
-    private func updateEntitlements() async {
-        var active = Set<String>()
-        for await result in Transaction.currentEntitlements {
-            guard let transaction = try? verified(result),
-                  Self.productIDs.contains(transaction.productID),
-                  transaction.revocationDate == nil else { continue }
-            active.insert(transaction.productID)
+    private func apply(_ entitlement: PremiumEntitlement) {
+        premiumEntitlement = entitlement
+        if entitlement.is_premium, let plan = entitlement.plan {
+            switch plan {
+            case "monthly": activeProductIDs = [Self.monthlyProductID]
+            case "yearly": activeProductIDs = [Self.yearlyProductID]
+            default: activeProductIDs = []
+            }
+        } else {
+            activeProductIDs = []
         }
-        activeProductIDs = active
+        onEntitlementUpdated?(entitlement)
     }
 
     private func verified<T>(_ result: VerificationResult<T>) throws -> T {

@@ -18,7 +18,7 @@ struct WeightProvider: TimelineProvider {
         let defaults = UserDefaults(suiteName: WidgetShared.suite)
         let weight = defaults?.object(forKey: "latestWeightKg") as? Double
         let height = defaults?.object(forKey: "heightCm") as? Double
-        let bmi = if let weight, let height, weight > 0, height > 0 { weight / pow(height / 100, 2) } else { nil }
+        let bmi: Double? = if let weight, let height, weight > 0, height > 0 { weight / pow(height / 100, 2) } else { nil }
         return WeightEntry(date: .now, weight: weight, bmi: bmi, weightDate: defaults?.string(forKey: "latestWeightDate"))
     }
 }

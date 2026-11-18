@@ -43,8 +43,7 @@ final class AppSession: ObservableObject {
             entries = list.items.sorted { $0.entry_date > $1.entry_date }
             premiumEntitlement = try? await entitlement
             isPremiumStatusLoading = false
-            let latestWeight = entries.first { ($0.weight_kg ?? 0) > 0 }
-            WidgetShared.save(weight: latestWeight?.weight_kg, heightCm: isPremium ? summary.profile.height_cm : nil, date: latestWeight?.entry_date)
+            updateWidgetData()
             errorMessage = nil
         } catch {
             isPremiumStatusLoading = false
@@ -55,9 +54,9 @@ final class AppSession: ObservableObject {
     }
 
     func refreshPremiumEntitlement() async {
-        guard isSignedIn else { premiumEntitlement = nil; return }
+        guard isSignedIn else { premiumEntitlement = nil; updateWidgetData(); return }
         isPremiumStatusLoading = true
-        defer { isPremiumStatusLoading = false }
+        defer { isPremiumStatusLoading = false; updateWidgetData() }
         do { premiumEntitlement = try await APIClient.shared.billingEntitlement() }
         catch {
             premiumEntitlement = nil
@@ -82,8 +81,34 @@ final class AppSession: ObservableObject {
         entries = []
         profile = nil
         premiumEntitlement = nil
-        WidgetShared.save(weight: nil, heightCm: nil, date: nil)
         isSignedIn = false
+        updateWidgetData()
+    }
+
+    func updateWidgetData() {
+        guard isSignedIn else {
+            WidgetShared.save(weight: nil, heightCm: nil, date: nil, bodyFatPct: nil, bodyFatIsEstimate: false, isPremium: false, weightHistory: [])
+            return
+        }
+
+        let latestWeight = entries.first { ($0.weight_kg ?? 0) > 0 }
+        let history = entries.reversed().compactMap { entry -> WidgetWeightPoint? in
+            guard let weight = entry.weight_kg, weight > 0, let date = entryDate(entry.entry_date) else { return nil }
+            return WidgetWeightPoint(date: date, weightKg: weight)
+        }
+        let tapeEntry = dashboardData?.latest_measurement_entry ?? latestWeight
+        let bodyFat = isPremium ? bodyFatOf(tapeEntry, profile: profile) : nil
+        let bodyFatIsEstimate = isPremium && tapeEntry?.body_fat_pct == nil && bodyFat != nil
+
+        WidgetShared.save(
+            weight: latestWeight?.weight_kg,
+            heightCm: isPremium ? profile?.height_cm : nil,
+            date: latestWeight?.entry_date,
+            bodyFatPct: bodyFat,
+            bodyFatIsEstimate: bodyFatIsEstimate,
+            isPremium: isPremium,
+            weightHistory: Array(history.suffix(8))
+        )
     }
 
     func saveProfile(name: String, sex: String, dateOfBirth: String?, age: String, height: String, goal: String) async throws {

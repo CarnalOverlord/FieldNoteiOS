@@ -176,7 +176,10 @@ struct ProfileView: View {
             .toolbarBackground(FieldNoteStyle.paper, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .onAppear {
-                billing.onEntitlementUpdated = { session.premiumEntitlement = $0 }
+                billing.onEntitlementUpdated = { entitlement in
+                    session.premiumEntitlement = entitlement
+                    session.updateWidgetData()
+                }
                 hydrate()
                 Task { await session.refreshPremiumEntitlement() }
             }

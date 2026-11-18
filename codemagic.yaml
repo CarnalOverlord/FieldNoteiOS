@@ -23,7 +23,7 @@ workflows:
             ''|*[!0-9]*) echo "Codemagic BUILD_NUMBER is missing or invalid: ${BUILD_NUMBER:-unset}"; exit 1 ;;
           esac
           BUILD_VERSION=$((BUILD_NUMBER + 15))
-          echo "Building FieldNote version 1.0 ($BUILD_VERSION) from Codemagic build $BUILD_NUMBER"
+          echo "Building FieldNote version 2.0 ($BUILD_VERSION) from Codemagic build $BUILD_NUMBER"
           xcode-project build-ipa \
             --project "$CM_BUILD_DIR/FieldNote.xcodeproj" \
             --scheme FieldNote \
